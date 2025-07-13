@@ -293,6 +293,7 @@
                 smileWins: localStorage.getItem('smileCompletionCount') || '0',
                 brotherWins: localStorage.getItem('brotherCompletionCount') || '0',
                 supremacyWins: localStorage.getItem('supremacyCompletionCount') || '0',
+                selfQuizCompleted: localStorage.getItem('selfQuizCompleted') || 'false',
             };
             localStorage.setItem('gameState', JSON.stringify(gameState));
             alert('Jogo Salvo!');
@@ -305,6 +306,7 @@
                 localStorage.setItem('smileCompletionCount', savedState.smileWins);
                 localStorage.setItem('brotherCompletionCount', savedState.brotherWins);
                 localStorage.setItem('supremacyCompletionCount', savedState.supremacyWins);
+                localStorage.setItem('selfQuizCompleted', savedState.selfQuizCompleted);
                 resumeFromState(savedState.storyPoint);
             }
         }
@@ -321,6 +323,17 @@
                 case 'beforeColonBoss': showScreen('newEndScreen'); elements.newEndMessage.textContent = "- vc e mais chato do que eu pensava..."; timers.push(setTimeout(() => triggerBossFightIntro('colon'), 3000)); break;
                 default: initializeGame(true); break;
             }
+        }
+        
+        function clearAllProgress() {
+            localStorage.removeItem('gameState');
+            localStorage.removeItem('smileCompletionCount');
+            localStorage.removeItem('brotherCompletionCount');
+            localStorage.removeItem('supremacyCompletionCount');
+            localStorage.removeItem('selfQuizCompleted');
+            samukaModeActive = false;
+            samukaAttackBoost = 1;
+            samukaHealthBoost = 0;
         }
 
         function resetGame() {
@@ -367,7 +380,16 @@
         function startNormalPath() { currentStoryPoint = 'start'; showScreen('smileScreen'); elements.smileText.textContent = ''; buttons.white.classList.add('hidden'); timers.push(setTimeout(() => { elements.smileText.textContent = "clique no botão branco abaixo"; buttons.white.classList.remove('hidden'); }, 7000)); }
         function startBrotherPath() { currentStoryPoint = 'beforeBrotherBoss'; showScreen('bwIntroScreen'); elements.bwFace.textContent = ":D"; elements.bwIntroText.textContent = "Oh... Eu vi que vc matou meu irmao 3 vezes..."; timers.push(setTimeout(() => { elements.bwIntroText.textContent = "Eu vi tudo......................."; timers.push(setTimeout(() => { showScreen('chemQuizScreen'); currentChemQuizIndex = 0; loadChemQuizQuestion(); }, 4000)); }, 4000)); }
         function startSupremacyPath() { currentStoryPoint = 'beforeSupremacyBoss'; showScreen('bwIntroScreen'); elements.bwFace.textContent = ":D"; elements.bwIntroText.textContent = "Vc ira pagar,Vc ira pagar,Vc ira pagar..."; timers.push(setTimeout(() => { elements.bwFace.textContent = "O_O"; elements.bwIntroText.textContent = "SE CURVE PARA A SUPREMACIA, O AUGE DO FULKERHENS"; buttons.dialogue.classList.remove('hidden'); }, 5000)); }
-        function startNewJourneyPath() { currentStoryPoint = 'newJourney'; showScreen('narratorScreen'); elements.narratorText.textContent = "Apos sua luta com O_O aquele mundo foi apagado pelo impacto da batalha"; timers.push(setTimeout(() => { elements.narratorText.textContent = "Logo... Uma nova jornada ira acontecer!"; timers.push(setTimeout(() => showScreen('newStartScreen'), 4000)); }, 4000)); }
+        
+        function startNewJourneyPath() {
+            currentStoryPoint = 'newJourney';
+            showScreen('narratorScreen');
+            elements.narratorText.textContent = "Apos sua luta com O_O aquele mundo foi apagado pelo impacto da batalha";
+            timers.push(setTimeout(() => {
+                elements.narratorText.textContent = "Logo... Uma nova jornada ira acontecer!";
+                timers.push(setTimeout(() => showScreen('newStartScreen'), 4000));
+            }, 4000));
+        }
         
         function showScreen(screenId) { Object.values(screens).forEach(s => s.classList.add('hidden')); if (screens[screenId]) screens[screenId].classList.remove('hidden'); }
         function clearAllTimers() { timers.forEach(clearTimeout); timers = []; if (gameLoopId) cancelAnimationFrame(gameLoopId); }
@@ -379,7 +401,7 @@
         function handleQuiz2Answer(sel) { if (sel === quiz2Data[currentQuiz2Index].correct) { currentQuiz2Index++; loadQuiz2Question(); } else { screens.secondQuizScreen.classList.add('animate-pulse'); setTimeout(() => screens.secondQuizScreen.classList.remove('animate-pulse'), 500); } }
         function loadChemQuizQuestion() { if (currentChemQuizIndex >= chemQuizData.length) { triggerBossFightIntro('brother'); return; } const q = chemQuizData[currentChemQuizIndex]; document.getElementById('chemQuestionText').textContent = q.question; const a = document.getElementById('chemAnswersContainer'); a.innerHTML = ''; q.answers.forEach(ans => { const b = document.createElement('button'); b.textContent = ans; b.className = "w-full p-4 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"; b.onclick = () => handleChemQuizAnswer(ans); a.appendChild(b); }); }
         function handleChemQuizAnswer(sel) { if (sel === chemQuizData[currentChemQuizIndex].correct) { currentChemQuizIndex++; loadChemQuizQuestion(); } else { screens.chemQuizScreen.classList.add('animate-pulse'); setTimeout(() => screens.chemQuizScreen.classList.remove('animate-pulse'), 500); } }
-        function loadSelfQuizQuestion() { if (currentSelfQuizIndex >= selfQuizData.length) { currentStoryPoint = 'beforeFrogBoss'; showScreen('newSmileScreen'); elements.newSmileText.textContent = "Parabens! vc terminou o self quiz"; timers.push(setTimeout(() => { elements.newSmileText.textContent = "Hey! lute com esse sapo"; timers.push(setTimeout(() => triggerBossFightIntro('frog'), 3000)); }, 3000)); return; } const q = selfQuizData[currentSelfQuizIndex]; document.getElementById('selfQuizQuestionText').textContent = q.question; const a = document.getElementById('selfQuizAnswersContainer'); a.innerHTML = ''; q.answers.forEach(ans => { const b = document.createElement('button'); b.textContent = ans; b.className = "w-full p-4 bg-gray-400 hover:bg-gray-500 rounded-lg transition-colors"; b.onclick = () => handleSelfQuizAnswer(ans); a.appendChild(b); }); }
+        function loadSelfQuizQuestion() { if (currentSelfQuizIndex >= selfQuizData.length) { localStorage.setItem('selfQuizCompleted', 'true'); currentStoryPoint = 'beforeFrogBoss'; showScreen('newSmileScreen'); elements.newSmileText.textContent = "Lute com ele!"; buttons.newContinue.classList.add('hidden'); timers.push(setTimeout(() => triggerBossFightIntro('frog'), 3000)); return; } const q = selfQuizData[currentSelfQuizIndex]; document.getElementById('selfQuizQuestionText').textContent = q.question; const a = document.getElementById('selfQuizAnswersContainer'); a.innerHTML = ''; q.answers.forEach(ans => { const b = document.createElement('button'); b.textContent = ans; b.className = "w-full p-4 bg-gray-400 hover:bg-gray-500 rounded-lg transition-colors"; b.onclick = () => handleSelfQuizAnswer(ans); a.appendChild(b); }); }
         function handleSelfQuizAnswer(sel) { if (sel === selfQuizData[currentSelfQuizIndex].correct) { currentSelfQuizIndex++; loadSelfQuizQuestion(); } else { screens.selfQuizScreen.classList.add('animate-pulse'); setTimeout(() => screens.selfQuizScreen.classList.remove('animate-pulse'), 500); } }
 
         // --- Lógica da Batalha ---
@@ -440,7 +462,7 @@
 
         function handlePlayerAttack() {
             if (currentTurn !== 'player') return;
-            bossHealth -= (30 * playerAttackModifier) + samukaAttackBoost;
+            bossHealth -= (30 * playerAttackModifier) * samukaAttackBoost;
             endPlayerTurn();
             if (bossHealth <= 0) { winGame(); } else { startBossTurn(); }
         }
@@ -627,12 +649,29 @@
         elements.crown.addEventListener('click', showCredits);
         buttons.retry.addEventListener('click', () => triggerBossFightIntro(lastBossDefeated));
         buttons.dialogue.addEventListener('click', () => { buttons.dialogue.classList.add('hidden'); elements.bwIntroText.textContent = "Voce: Se voce e tao bom assim, porque vc perdeu?"; timers.push(setTimeout(() => triggerBossFightIntro('supremacy'), 4000)); });
-        buttons.newStart.addEventListener('click', () => { showScreen('newSmileScreen'); elements.newSmileText.textContent = "Oi novato! bem vindo ao novo mundo! clique no botao abaixo para continuar"; });
+        
+        buttons.newStart.addEventListener('click', () => {
+            const quizCompleted = localStorage.getItem('selfQuizCompleted') === 'true';
+            if (quizCompleted) {
+                currentStoryPoint = 'beforeFrogBoss';
+                showScreen('newSmileScreen');
+                elements.newSmileText.textContent = "Você de novo? Lute com este sapo!";
+                buttons.newContinue.classList.add('hidden');
+                timers.push(setTimeout(() => {
+                    triggerBossFightIntro('frog');
+                }, 3000));
+            } else {
+                showScreen('newSmileScreen');
+                elements.newSmileText.textContent = "Oi novato! bem vindo ao novo mundo! clique no botao abaixo para continuar";
+                buttons.newContinue.classList.remove('hidden');
+            }
+        });
+
         buttons.newContinue.addEventListener('click', () => showScreen('photoButtonScreen'));
         buttons.photo.addEventListener('click', () => { showScreen('selfQuizScreen'); currentSelfQuizIndex = 0; loadSelfQuizQuestion(); });
         buttons.save.addEventListener('click', saveGame);
         buttons.confirmLoad.addEventListener('click', () => { showScreen('startScreen'); loadGame(); });
-        buttons.denyLoad.addEventListener('click', () => { localStorage.removeItem('gameState'); initializeGame(true); });
+        buttons.denyLoad.addEventListener('click', () => { clearAllProgress(); initializeGame(true); });
         
         buttons.samuka.addEventListener('click', () => {
             if (samukaModeActive) {
