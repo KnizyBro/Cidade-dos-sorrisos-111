@@ -357,24 +357,23 @@
             const brotherWins = parseInt(localStorage.getItem('brotherCompletionCount') || '0');
             const supremacyWins = parseInt(localStorage.getItem('supremacyCompletionCount') || '0');
 
+            buttons.start.classList.remove('broken-button');
             if (supremacyWins >= 1) {
-                startNewJourneyPath();
+                buttons.start.textContent = "Nova Jornada";
+                buttons.start.onclick = startNewJourneyPath;
+            } else if (brotherWins >= 3) {
+                buttons.start.textContent = "??????????";
+                buttons.start.classList.add('broken-button');
+                buttons.start.onclick = startSupremacyPath;
+            } else if (smileWins >= 3) {
+                buttons.start.textContent = "C̴l̴i̴q̴u̴e̴ ̴e̴m̴ ̴M̴i̴m̴";
+                buttons.start.classList.add('broken-button');
+                buttons.start.onclick = startBrotherPath;
             } else {
-                buttons.start.classList.remove('broken-button');
-                if (brotherWins >= 3) {
-                    buttons.start.textContent = "??????????";
-                    buttons.start.classList.add('broken-button');
-                    buttons.start.onclick = startSupremacyPath;
-                } else if (smileWins >= 3) {
-                    buttons.start.textContent = "C̴l̴i̴q̴u̴e̴ ̴e̴m̴ ̴M̴i̴m̴";
-                    buttons.start.classList.add('broken-button');
-                    buttons.start.onclick = startBrotherPath;
-                } else {
-                    buttons.start.textContent = "Clique em Mim";
-                    buttons.start.onclick = startNormalPath;
-                }
-                showScreen('startScreen');
+                buttons.start.textContent = "Clique em Mim";
+                buttons.start.onclick = startNormalPath;
             }
+            showScreen('startScreen');
         }
 
         function startNormalPath() { currentStoryPoint = 'start'; showScreen('smileScreen'); elements.smileText.textContent = ''; buttons.white.classList.add('hidden'); timers.push(setTimeout(() => { elements.smileText.textContent = "clique no botão branco abaixo"; buttons.white.classList.remove('hidden'); }, 7000)); }
