@@ -90,11 +90,13 @@
             from { top: 100%; }
             to { top: -150%; }
         }
-        .save-button-container {
+        .global-button-container {
             position: fixed;
             top: 20px;
             right: 20px;
             z-index: 1000;
+            display: flex;
+            gap: 10px;
         }
         .modal {
             background-color: rgba(0,0,0,0.8);
@@ -108,7 +110,8 @@
     </audio>
 
     <!-- UI Global -->
-    <div class="save-button-container">
+    <div class="global-button-container">
+        <button id="samukaButton" class="px-4 py-2 bg-yellow-600 text-white rounded-lg shadow-lg hover:bg-yellow-500 transition-colors">Eu sou o Samuka</button>
         <button id="saveButton" class="px-4 py-2 bg-blue-600 text-white rounded-lg shadow-lg hover:bg-blue-500 transition-colors">Salvar Jogo</button>
     </div>
     <div id="loadSaveModal" class="screen modal hidden">
@@ -118,6 +121,31 @@
                 <button id="confirmLoadButton" class="px-8 py-3 bg-green-600 rounded-lg hover:bg-green-500">Sim</button>
                 <button id="denyLoadButton" class="px-8 py-3 bg-red-600 rounded-lg hover:bg-red-500">Nao</button>
             </div>
+        </div>
+    </div>
+    <div id="samukaPasswordModal" class="screen modal hidden">
+        <div class="bg-gray-800 p-8 rounded-lg text-white shadow-2xl">
+            <h2 class="text-2xl mb-4">Senha do Samuka:</h2>
+            <input type="password" id="samukaPasswordInput" class="p-2 rounded-lg text-black">
+            <button id="samukaPasswordSubmit" class="ml-2 px-4 py-2 bg-yellow-600 rounded-lg hover:bg-yellow-500">Entrar</button>
+        </div>
+    </div>
+    <div id="samukaModeScreen" class="screen modal hidden">
+         <div class="bg-gray-900 p-8 rounded-lg text-white shadow-2xl border-4 border-yellow-500 max-w-3xl w-full">
+            <h2 class="text-3xl mb-4 text-yellow-400">Modo Samuka Ativado</h2>
+            <p class="mb-6">Spoilers: Vai ter batalhas ultra dificeis, com stun entre outras...</p>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <button class="teleport-button px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded" data-boss="smile">Teleporte: :(</button>
+                <button class="teleport-button px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded" data-boss="brother">Teleporte: :D</button>
+                <button class="teleport-button px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded" data-boss="supremacy">Teleporte: O_O</button>
+                <button class="teleport-button px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded" data-boss="frog">Teleporte: Sapo</button>
+                <button class="teleport-button px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded" data-boss="colon">Teleporte: :]</button>
+            </div>
+            <div class="mt-4">
+                <input type="text" id="samukaCommandInput" placeholder="Digite um comando..." class="p-2 rounded-lg text-black w-2/3">
+                <button id="samukaCommandSubmit" class="ml-2 px-4 py-2 bg-red-700 rounded-lg hover:bg-red-600">Executar</button>
+            </div>
+            <button id="samukaContinueButton" class="mt-6 px-8 py-3 bg-blue-600 rounded-lg hover:bg-blue-500">Continuar o jogo anterior</button>
         </div>
     </div>
 
@@ -207,6 +235,10 @@
             save: document.getElementById('saveButton'),
             confirmLoad: document.getElementById('confirmLoadButton'),
             denyLoad: document.getElementById('denyLoadButton'),
+            samuka: document.getElementById('samukaButton'),
+            samukaPasswordSubmit: document.getElementById('samukaPasswordSubmit'),
+            samukaContinue: document.getElementById('samukaContinueButton'),
+            samukaCommandSubmit: document.getElementById('samukaCommandSubmit'),
         };
         const elements = {
             smileText: document.getElementById('smileText'),
@@ -223,6 +255,8 @@
             xpText: document.getElementById('xpText'),
             newEndMessage: document.getElementById('newEndMessage'),
             gameOverMessage: document.getElementById('gameOverMessage'),
+            samukaPasswordInput: document.getElementById('samukaPasswordInput'),
+            samukaCommandInput: document.getElementById('samukaCommandInput'),
         };
 
         // --- Variáveis de Estado do Jogo ---
@@ -230,6 +264,9 @@
         let currentQuiz1Index = 0, currentQuiz2Index = 0, currentChemQuizIndex = 0, currentSelfQuizIndex = 0;
         let lastBossDefeated = null;
         let currentStoryPoint = 'start';
+        let samukaModeActive = false;
+        let samukaAttackBoost = 1;
+        let samukaHealthBoost = 0;
         
         // --- Variáveis da Batalha ---
         const canvas = document.getElementById('bossCanvas');
@@ -369,7 +406,7 @@
             elements.bossIntroText.textContent = '';
             canvas.classList.remove('hidden');
             
-            maxPlayerHealth = 100;
+            maxPlayerHealth = 100 + samukaHealthBoost;
             playerHealth = maxPlayerHealth;
             bossPhase = 1;
             healCharges = 3;
@@ -403,7 +440,7 @@
 
         function handlePlayerAttack() {
             if (currentTurn !== 'player') return;
-            bossHealth -= 30 * playerAttackModifier;
+            bossHealth -= (30 * playerAttackModifier) + samukaAttackBoost;
             endPlayerTurn();
             if (bossHealth <= 0) { winGame(); } else { startBossTurn(); }
         }
@@ -596,6 +633,48 @@
         buttons.save.addEventListener('click', saveGame);
         buttons.confirmLoad.addEventListener('click', () => { showScreen('startScreen'); loadGame(); });
         buttons.denyLoad.addEventListener('click', () => { localStorage.removeItem('gameState'); initializeGame(true); });
+        
+        buttons.samuka.addEventListener('click', () => {
+            if (samukaModeActive) {
+                showScreen('samukaModeScreen');
+            } else {
+                showScreen('samukaPasswordModal');
+            }
+        });
+
+        buttons.samukaPasswordSubmit.addEventListener('click', () => {
+            if (elements.samukaPasswordInput.value === 'SamukinhaAmigo12') {
+                samukaModeActive = true;
+                showScreen('samukaModeScreen');
+                screens.samukaPasswordModal.classList.add('hidden');
+                elements.samukaPasswordInput.value = '';
+            } else {
+                alert('Senha incorreta!');
+            }
+        });
+
+        buttons.samukaCommandSubmit.addEventListener('click', () => {
+            const command = elements.samukaCommandInput.value.trim();
+            if (command === 'set attaque +9999999') {
+                samukaAttackBoost = 9999999;
+                alert('Comando de ataque ativado!');
+            } else if (command === 'set live +9999999') {
+                samukaHealthBoost = 9999999;
+                alert('Comando de vida ativado!');
+            } else {
+                alert('Comando desconhecido.');
+            }
+            elements.samukaCommandInput.value = '';
+        });
+
+        document.querySelectorAll('.teleport-button').forEach(button => {
+            button.addEventListener('click', (e) => {
+                const boss = e.target.dataset.boss;
+                screens.samukaModeScreen.classList.add('hidden');
+                triggerBossFightIntro(boss);
+            });
+        });
+        buttons.samukaContinue.addEventListener('click', () => screens.samukaModeScreen.classList.add('hidden'));
 
         // --- Início ---
         window.onresize = setupCanvas;
