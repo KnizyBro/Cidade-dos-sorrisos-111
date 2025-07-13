@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Uma Experiência</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=VT323&family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Press Start 2P', cursive;
+            overflow: hidden;
+            background-color: black;
+        }
+        .screen {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            position: absolute;
+            top: 0;
+            left: 0;
+            transition: opacity 0.5s ease-in-out;
+        }
+        .hidden {
+            display: none;
+        }
+        .windows-bg {
+            background-image: url('https://i.imgur.com/M22HjB2.jpeg');
+            background-size: cover;
+            background-position: center;
+        }
+        .desktop-icon {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: white;
+            text-shadow: 2px 2px 4px #000000;
+            cursor: pointer;
+        }
+        .desktop-icon img {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 8px;
+        }
+        .jumpscare {
+            background-image: url('https://i.ytimg.com/vi/g3eH4as63eM/maxresdefault.jpg');
+            background-size: cover;
+            background-position: center;
+            animation: shake 0.5s infinite;
+        }
+        @keyframes shake {
+            0% { transform: translate(1px, 1px) rotate(0deg); } 10% { transform: translate(-1px, -2px) rotate(-1deg); } 20% { transform: translate(-3px, 0px) rotate(1deg); } 30% { transform: translate(3px, 2px) rotate(0deg); } 40% { transform: translate(1px, -1px) rotate(1deg); } 50% { transform: translate(-1px, 2px) rotate(-1deg); } 60% { transform: translate(-3px, 1px) rotate(0deg); } 70% { transform: translate(3px, 1px) rotate(-1deg); } 80% { transform: translate(-1px, -1px) rotate(1deg); } 90% { transform: translate(1px, 2px) rotate(0deg); } 100% { transform: translate(1px, -2px) rotate(-1deg); }
+        }
+        #bossCanvas {
+            background-color: #111;
+            border: 2px solid #333;
+        }
+        .fight-button-container {
+            position: absolute;
+            bottom: 5%;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .grayscale {
+            filter: grayscale(100%);
+        }
+        .broken-button {
+            animation: shake 0.8s infinite;
+            background: repeating-linear-gradient(45deg, #606dbc, #606dbc 10px, #465298 10px, #465298 20px);
+            color: #ff0000;
+            text-shadow: 2px 2px #000;
+        }
+        .credits-content {
+            position: absolute;
+            top: 100%;
+            width: 100%;
+            text-align: center;
+            animation: scrollUp 15s linear forwards;
+        }
+        @keyframes scrollUp {
+            from { top: 100%; }
+            to { top: -150%; }
+        }
+    </style>
+</head>
+<body class="bg-black">
+    <audio id="quizMusic" loop>
+        <source src="https://ia800504.us.archive.org/12/items/PapersPleaseMusic-GloryToArstotzka/PapersPleaseTheme.mp3" type="audio/mpeg">
+    </audio>
+
+    <!-- Telas Iniciais e Quiz -->
+    <div id="startScreen" class="screen bg-gray-200">
+        <button id="startButton" class="px-12 py-6 bg-gradient-to-r from-purple-400 via-pink-500 to-red-500 text-white font-bold rounded-lg shadow-xl transform hover:scale-110 transition-transform">Clique em Mim</button>
+    </div>
+    <div id="smileScreen" class="screen bg-black text-white"><h1 id="smileFace" class="text-9xl mb-8">:)</h1><p id="smileText" class="text-2xl"></p><button id="whiteButton" class="mt-8 px-8 py-4 bg-white text-black font-bold rounded-lg shadow-lg hidden">...</button></div>
+    <div id="windowsScreen" class="screen windows-bg justify-start items-start p-8"><div id="gameIcon" class="desktop-icon"><img src="https://www.windows7.com.br/imagens/icones/Windows-Media-Center.png" alt="Ícone de Jogo"><span>Quiz do Windows</span></div></div>
+    <div id="quizScreen" class="screen bg-blue-900 text-white p-4"><div class="bg-black bg-opacity-50 p-8 rounded-lg shadow-2xl max-w-2xl w-full"><h2 class="text-3xl mb-6" style="font-family: 'VT323', monospace;">Quiz do Windows!1!1</h2><p id="questionText" class="text-xl mb-8"></p><div id="answersContainer" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div></div></div>
+    <div id="postQuizSmileScreen" class="screen bg-black text-white"><h1 class="text-9xl mb-8">;)</h1><p class="text-2xl">Parabens! Vc completou o quiz!</p><p class="text-2xl">Agora clique nesse botao abaixo.</p><button id="toEndButton" class="mt-8 px-8 py-4 bg-gradient-to-r from-green-400 to-blue-500 text-white font-bold rounded-lg shadow-lg">Finalizar</button></div>
+    <div id="endScreen" class="screen bg-gray-800 text-white"><h1 class="text-8xl">FIM.</h1><p id="endMessage" class="mt-8 text-xl text-yellow-300"></p></div>
+    <div id="angryScreen" class="screen bg-gradient-to-br from-red-500 to-orange-400 text-white"><h2 class="text-4xl p-4">Muito bem... Vc quer me irritar certo...</h2></div>
+    <div id="jumpscareScreen" class="screen jumpscare"></div>
+    <div id="connectionLostScreen" class="screen bg-black text-red-600"><h1 class="text-6xl">Conexão Perdida.</h1></div>
+    <div id="handScreen" class="screen bg-white text-black"><h1 id="hand" class="text-9xl cursor-pointer transform hover:scale-125 transition-transform">👋</h1></div>
+    <div id="secondQuizScreen" class="screen bg-gray-900 text-white p-4"><div class="bg-black bg-opacity-75 p-8 rounded-lg shadow-2xl max-w-3xl w-full"><p class="text-red-500 text-2xl mb-6">Vc me irritou... Agora vc vai ter o pior quiz da sua vida...</p><p id="secondQuestionText" class="text-xl mb-8"></p><div id="secondAnswersContainer" class="grid grid-cols-1 gap-4"></div></div></div>
+    
+    <!-- Telas do Final Secreto -->
+    <div id="bwIntroScreen" class="screen bg-black text-white grayscale">
+        <h1 class="text-9xl mb-8">:D</h1>
+        <p id="bwIntroText" class="text-2xl"></p>
+    </div>
+    <div id="chemQuizScreen" class="screen bg-black text-white p-4 grayscale">
+        <div class="bg-white bg-opacity-10 p-8 rounded-lg shadow-2xl max-w-4xl w-full">
+            <h2 class="text-3xl mb-6 text-red-400" style="font-family: 'VT323', monospace;">Quiz da Vingança</h2>
+            <p id="chemQuestionText" class="text-lg mb-8"></p>
+            <div id="chemAnswersContainer" class="grid grid-cols-1 gap-4"></div>
+        </div>
+    </div>
+    
+    <!-- Telas de Batalha e Finais -->
+    <div id="bossFightScreen" class="screen bg-black text-white">
+        <p id="bossIntroText" class="text-2xl mb-4"></p>
+        <canvas id="bossCanvas"></canvas>
+        <div class="fight-button-container">
+            <button id="fightButton" class="px-10 py-5 bg-yellow-400 text-black font-bold rounded-full shadow-xl transform hover:scale-110 transition-transform">Lutar</button>
+        </div>
+    </div>
+    <div id="victoryScreen" class="screen bg-black text-yellow-300">
+        <h1 id="crown" class="text-9xl cursor-pointer transform hover:rotate-12 transition-transform">👑</h1>
+        <p class="mt-4 text-2xl">Você venceu.</p>
+    </div>
+    <div id="gameOverScreen" class="screen bg-black text-red-500">
+        <h1 class="text-8xl">Game Over</h1>
+        <button id="retryButton" class="mt-8 px-8 py-4 bg-white text-black font-bold rounded-lg">Tentar Novamente</button>
+    </div>
+    <div id="creditsScreen" class="screen bg-black text-white overflow-hidden">
+        <div class="credits-content">
+            <h1 class="text-6xl mb-24">Créditos</h1>
+            <p class="text-4xl mb-8">Luan</p>
+            <p class="text-4xl mb-8">Luan</p>
+            <p class="text-4xl mb-8">Luan</p>
+            <p class="text-4xl mb-8">Luan</p>
+            <p class="text-4xl mb-8">Luan</p>
+            <p class="text-4xl mb-8">Luan</p>
+        </div>
+    </div>
+
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // --- Elementos do DOM ---
+        const screens = {};
+        document.querySelectorAll('.screen').forEach(s => screens[s.id] = s);
+        const audio = { quiz: document.getElementById('quizMusic') };
+        const buttons = {
+            start: document.getElementById('startButton'),
+            white: document.getElementById('whiteButton'),
+            toEnd: document.getElementById('toEndButton'),
+            fight: document.getElementById('fightButton'),
+            retry: document.getElementById('retryButton'),
+        };
+        const elements = {
+            smileText: document.getElementById('smileText'),
+            gameIcon: document.getElementById('gameIcon'),
+            endMessage: document.getElementById('endMessage'),
+            hand: document.getElementById('hand'),
+            crown: document.getElementById('crown'),
+            bossIntroText: document.getElementById('bossIntroText'),
+            bwIntroText: document.getElementById('bwIntroText'),
+        };
+
+        // --- Variáveis de Estado do Jogo ---
+        let timers = [];
+        let currentQuiz1Index = 0;
+        let currentQuiz2Index = 0;
+        let currentChemQuizIndex = 0;
+        let lastBossDefeated = null;
+        
+        // --- Variáveis da Batalha ---
+        const canvas = document.getElementById('bossCanvas');
+        const ctx = canvas.getContext('2d');
+        let playerHealth, maxPlayerHealth, bossHealth, maxBossHealth, bossPhase;
+        let currentTurn;
+        let player, projectiles, gameLoopId;
+        
+        // --- Dados dos Quizzes ---
+        const quiz1Data = [ { question: "Quem que fez esse quiz?", answers: ["Dolly", "Luan", "Ian", "Emanuel"], correct: "Luan" }, { question: "Qual e o nome do roblox do criador desse quiz?", answers: ["SamucaBR", "DollyBR", "Knizy", "IanGamer"], correct: "Knizy" }, { question: "Qual sao os amigos dele?", answers: ["Maria, João, Pedro", "Ana, Bia, Carla", "Samuca, Dolly, Ian e Emanuel", "Lucas, Tiago, Mateus"], correct: "Samuca, Dolly, Ian e Emanuel" } ];
+        const quiz2Data = [ { question: "Qual foi a primeira pessoa que o dolly gostou", answers: ["Maria", "Ana", "Alice ou baby alice ou lice", "Carla"], correct: "Alice ou baby alice ou lice" }, { question: "Qual e o maior medo do samuca?", answers: ["Baratas", "Altura", "Undyne imortal ou Doki Doki", "Escuro"], correct: "Undyne imortal ou Doki Doki" }, { question: "Qual%#@%^%^#5168321563156783156723", isGlitched: true } ];
+        const chemQuizData = [
+            { question: "Se 50,0 g de benzeno (C₆H₆) a 25 °C absorvem 2,71 kJ de calor, qual será a temperatura final? (c = 1,72 J/g·°C)", answers: ["42,1 °C", "aproximadamente 56,5 °C", "31,5 °C", "81,5 °C"], correct: "aproximadamente 56,5 °C" },
+            { question: "Em um ensaio de espectroscopia de absorção atômica, como se calcula a concentração de um elemento em ppb a partir de dados instrumentais?", answers: ["Pela curva de calibração usando padrões", "Resposta simples: converte diretamente a absorbância em concentração (µg/L = ppb)", "Usando a Lei de Beer-Lambert sem calibração", "Medindo a emissão em vez da absorção"], correct: "Resposta simples: converte diretamente a absorbância em concentração (µg/L = ppb)" },
+            { question: "Qual o número de coordenação de um íon central em um complexo octaédrico e que geometria ele apresenta?", answers: ["Coordenação 4, tetraédrica", "Coordenação 8, cúbica", "octaédrica.", "Coordenação 6, planar quadrada"], correct: "octaédrica." },
+            { question: "Por que é um desafio construir uma bateria de lítio-ar (Li–O₂) prática? Identifique um dos principais obstáculos.", answers: ["A reatividade do eletrólito com o metal de lítio.", "A formação de peróxidos/superóxidos que degradam os componentes.", "A baixa densidade de energia.", "(Esse eu nao sei)"], correct: "(Esse eu nao sei)" }
+        ];
+        const chemicalElements = ['H', 'He', 'Li', 'Be', 'B', 'C', 'N', 'O', 'F', 'Ne', 'Na', 'Mg', 'Al', 'Si', 'P', 'S', 'Cl', 'Ar'];
+
+        // --- Lógica de Jogo Principal ---
+        function initializeGame() {
+            const completionCount = parseInt(localStorage.getItem('completionCount') || '0');
+            if (completionCount >= 3) {
+                buttons.start.textContent = "C̴l̴i̴q̴u̴e̴ ̴e̴m̴ ̴M̴i̴m̴";
+                buttons.start.classList.add('broken-button');
+                buttons.start.onclick = startSecretPath;
+            } else {
+                buttons.start.textContent = "Clique em Mim";
+                buttons.start.classList.remove('broken-button');
+                buttons.start.onclick = startNormalPath;
+            }
+            resetGame();
+        }
+
+        function startNormalPath() {
+            showScreen('smileScreen');
+            elements.smileText.textContent = '';
+            buttons.white.classList.add('hidden');
+            timers.push(setTimeout(() => {
+                elements.smileText.textContent = "clique no botão branco abaixo";
+                buttons.white.classList.remove('hidden');
+            }, 7000));
+        }
+
+        function startSecretPath() {
+            showScreen('bwIntroScreen');
+            elements.bwIntroText.textContent = "Oh... Eu vi que vc matou meu irmao 3 vezes...";
+            timers.push(setTimeout(() => {
+                elements.bwIntroText.textContent = "Eu vi tudo.......................";
+                timers.push(setTimeout(() => {
+                    showScreen('chemQuizScreen');
+                    currentChemQuizIndex = 0;
+                    loadChemQuizQuestion();
+                }, 4000));
+            }, 4000));
+        }
+        
+        function showScreen(screenId) { Object.values(screens).forEach(s => s.classList.add('hidden')); if (screens[screenId]) screens[screenId].classList.remove('hidden'); }
+        function clearAllTimers() { timers.forEach(clearTimeout); timers = []; if (gameLoopId) cancelAnimationFrame(gameLoopId); }
+        function resetGame() { clearAllTimers(); audio.quiz.pause(); audio.quiz.currentTime = 0; currentQuiz1Index = 0; currentQuiz2Index = 0; showScreen('startScreen'); }
+
+        // --- Lógica dos Quizzes ---
+        function loadQuiz1Question() { if (currentQuiz1Index >= quiz1Data.length) { showScreen('postQuizSmileScreen'); return; } const q = quiz1Data[currentQuiz1Index]; document.getElementById('questionText').textContent = q.question; const a = document.getElementById('answersContainer'); a.innerHTML = ''; q.answers.forEach(ans => { const b = document.createElement('button'); b.textContent = ans; b.className = "w-full p-4 bg-blue-700 hover:bg-blue-600 rounded-lg transition-colors"; b.onclick = () => handleQuiz1Answer(ans); a.appendChild(b); }); }
+        function handleQuiz1Answer(sel) { if (sel === quiz1Data[currentQuiz1Index].correct) { currentQuiz1Index++; loadQuiz1Question(); } else { screens.quizScreen.classList.add('animate-pulse'); setTimeout(() => screens.quizScreen.classList.remove('animate-pulse'), 500); } }
+        function loadQuiz2Question() { if (currentQuiz2Index >= quiz2Data.length) return; const q = quiz2Data[currentQuiz2Index]; document.getElementById('secondQuestionText').textContent = q.question; const a = document.getElementById('secondAnswersContainer'); a.innerHTML = ''; if (q.isGlitched) { const b = document.createElement('button'); b.textContent = q.question; b.className = "w-full p-4 bg-red-800 hover:bg-red-700 rounded-lg font-mono"; b.onclick = () => triggerBossFightIntro('smile'); a.appendChild(b); } else { q.answers.forEach(ans => { const b = document.createElement('button'); b.textContent = ans; b.className = "w-full p-4 bg-gray-700 hover:bg-gray-600 rounded-lg"; b.onclick = () => handleQuiz2Answer(ans); a.appendChild(b); }); } }
+        function handleQuiz2Answer(sel) { if (sel === quiz2Data[currentQuiz2Index].correct) { currentQuiz2Index++; loadQuiz2Question(); } else { screens.secondQuizScreen.classList.add('animate-pulse'); setTimeout(() => screens.secondQuizScreen.classList.remove('animate-pulse'), 500); } }
+        function loadChemQuizQuestion() { if (currentChemQuizIndex >= chemQuizData.length) { triggerBossFightIntro('brother'); return; } const q = chemQuizData[currentChemQuizIndex]; document.getElementById('chemQuestionText').textContent = q.question; const a = document.getElementById('chemAnswersContainer'); a.innerHTML = ''; q.answers.forEach(ans => { const b = document.createElement('button'); b.textContent = ans; b.className = "w-full p-4 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"; b.onclick = () => handleChemQuizAnswer(ans); a.appendChild(b); }); }
+        function handleChemQuizAnswer(sel) { if (sel === chemQuizData[currentChemQuizIndex].correct) { currentChemQuizIndex++; loadChemQuizQuestion(); } else { screens.chemQuizScreen.classList.add('animate-pulse'); setTimeout(() => screens.chemQuizScreen.classList.remove('animate-pulse'), 500); } }
+
+        // --- Lógica da Batalha ---
+        function setupCanvas() { const sw = window.innerWidth; const sh = window.innerHeight; canvas.width = Math.min(sw * 0.9, 800); canvas.height = Math.min(sh * 0.7, 600); }
+        function triggerBossFightIntro(bossType) {
+            lastBossDefeated = bossType;
+            audio.quiz.pause();
+            showScreen('bossFightScreen');
+            let introText = bossType === 'smile' ? "PORQUE?!?! VC QUER FICAR TANTO AQUI!" : "Você é persistente... e irritante.";
+            elements.bossIntroText.textContent = introText;
+            canvas.classList.add('hidden');
+            buttons.fight.classList.add('hidden');
+            timers.push(setTimeout(() => {
+                elements.bossIntroText.textContent = "Vamos acabar com isso.";
+                timers.push(setTimeout(() => startBossFight(bossType), 2000));
+            }, 4000));
+        }
+
+        function startBossFight(bossType) {
+            setupCanvas();
+            elements.bossIntroText.textContent = '';
+            canvas.classList.remove('hidden');
+            
+            maxPlayerHealth = 100;
+            playerHealth = maxPlayerHealth;
+            bossPhase = 1;
+            
+            if (bossType === 'brother') {
+                maxBossHealth = 180; // Total HP for 2 phases
+                bossHealth = maxBossHealth;
+            } else {
+                maxBossHealth = 90;
+                bossHealth = maxBossHealth;
+            }
+
+            player = { x: canvas.width / 2, y: canvas.height / 2, radius: 15 };
+            projectiles = [];
+            
+            canvas.addEventListener('mousemove', movePlayer);
+            startPlayerTurn();
+        }
+
+        function startPlayerTurn() { currentTurn = 'player'; buttons.fight.disabled = false; buttons.fight.classList.remove('hidden'); drawBattleState(); }
+        function handlePlayerAttack() {
+            if (currentTurn !== 'player') return;
+            bossHealth -= 30;
+            buttons.fight.disabled = true;
+
+            if (lastBossDefeated === 'brother' && bossHealth <= maxBossHealth / 2 && bossPhase === 1) {
+                bossPhase = 2;
+            }
+
+            if (bossHealth <= 0) { winGame(); } else { startBossTurn(); }
+        }
+
+        function startBossTurn() {
+            currentTurn = 'boss_attack';
+            buttons.fight.classList.add('hidden');
+            projectiles = [];
+            let attackSpeed = (lastBossDefeated === 'brother' && bossPhase === 2) ? 4 : 2;
+            let numProjectiles = (lastBossDefeated === 'brother' && bossPhase === 2) ? 40 : 25;
+
+            for (let i = 0; i < numProjectiles; i++) {
+                const side = Math.floor(Math.random() * 4);
+                let x, y, vx, vy;
+                const speed = (Math.random() * 2) + attackSpeed;
+                if (side === 0) { x = 0; y = Math.random() * canvas.height; vx = speed; vy = 0; }
+                else if (side === 1) { x = canvas.width; y = Math.random() * canvas.height; vx = -speed; vy = 0; }
+                else if (side === 2) { y = 0; x = Math.random() * canvas.width; vx = 0; vy = speed; }
+                else { y = canvas.height; x = Math.random() * canvas.width; vx = 0; vy = -speed; }
+                
+                let text = null;
+                if (lastBossDefeated === 'brother') {
+                    text = chemicalElements[Math.floor(Math.random() * chemicalElements.length)];
+                }
+                projectiles.push({ x, y, vx, vy, radius: lastBossDefeated === 'brother' ? 12 : 8, text });
+            }
+            gameLoopId = requestAnimationFrame(gameLoop);
+            timers.push(setTimeout(() => { cancelAnimationFrame(gameLoopId); startPlayerTurn(); }, 5000));
+        }
+        
+        function gameLoop() { updateProjectiles(); checkCollisions(); drawBattleState(); if (currentTurn === 'boss_attack') gameLoopId = requestAnimationFrame(gameLoop); }
+        function updateProjectiles() { projectiles.forEach(p => { p.x += p.vx; p.y += p.vy; }); }
+        function checkCollisions() { projectiles.forEach(p => { const dist = Math.hypot(player.x - p.x, player.y - p.y); if (dist < player.radius + p.radius) { playerHealth -= 10; p.x = -1000; if (playerHealth <= 0) loseGame(); } }); }
+
+        function drawBattleState() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawBossFace();
+            drawHealthBars();
+
+            if (currentTurn === 'boss_attack') {
+                ctx.fillStyle = 'cyan'; ctx.beginPath(); ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2); ctx.fill();
+                projectiles.forEach(p => {
+                    if (p.text) {
+                        ctx.font = "20px 'Press Start 2P'"; ctx.fillStyle = 'lime'; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(p.text, p.x, p.y);
+                    } else {
+                        ctx.fillStyle = 'white'; ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2); ctx.fill();
+                    }
+                });
+            } else {
+                 ctx.font = "40px 'Press Start 2P'"; ctx.fillStyle = "white"; ctx.textAlign = "center"; ctx.fillText("Sua vez de atacar!", canvas.width / 2, canvas.height / 2 + 50);
+            }
+        }
+
+        function drawBossFace() {
+            let face = ':(';
+            if (lastBossDefeated === 'brother') face = bossPhase === 1 ? ':D' : '>:D';
+            ctx.font = "80px 'Press Start 2P'"; ctx.fillStyle = "red"; ctx.textAlign = "center";
+            const shakeX = (Math.random() - 0.5) * (1 - (bossHealth / maxBossHealth)) * 10;
+            const shakeY = (Math.random() - 0.5) * (1 - (bossHealth / maxBossHealth)) * 10;
+            ctx.fillText(face, canvas.width / 2 + shakeX, 120 + shakeY);
+        }
+
+        function drawHealthBars() {
+            let bossName = lastBossDefeated === 'brother' ? 'IRMÃO' : 'SORRISO';
+            ctx.fillStyle = '#555'; ctx.fillRect(10, 10, canvas.width - 20, 30);
+            ctx.fillStyle = 'red'; ctx.fillRect(10, 10, (canvas.width - 20) * (bossHealth / maxBossHealth), 30);
+            if (lastBossDefeated === 'brother' && bossPhase === 2) {
+                ctx.fillStyle = 'purple';
+                ctx.fillRect(10, 10, (canvas.width - 20) * (bossHealth / maxBossHealth), 30);
+            }
+            ctx.fillStyle = 'white'; ctx.font = "20px 'Press Start 2P'"; ctx.textAlign = "center"; ctx.fillText(bossName, canvas.width / 2, 35);
+            ctx.fillStyle = '#555'; ctx.fillRect(10, canvas.height - 40, canvas.width - 20, 30);
+            ctx.fillStyle = 'cyan'; ctx.fillRect(10, canvas.height - 40, (canvas.width - 20) * (playerHealth / maxPlayerHealth), 30);
+            ctx.fillStyle = 'white'; ctx.fillText(`VOCÊ`, canvas.width / 2, canvas.height - 15);
+        }
+
+        function movePlayer(e) { const rect = canvas.getBoundingClientRect(); player.x = e.clientX - rect.left; player.y = e.clientY - rect.top; }
+        
+        function winGame() {
+            clearAllTimers();
+            const completionCount = parseInt(localStorage.getItem('completionCount') || '0');
+            localStorage.setItem('completionCount', completionCount + 1);
+            showScreen('victoryScreen');
+        }
+
+        function showCredits() {
+            showScreen('creditsScreen');
+            timers.push(setTimeout(initializeGame, 15000)); // Reinicia o jogo após 15s
+        }
+
+        function loseGame() { clearAllTimers(); showScreen('gameOverScreen'); }
+
+        // --- Event Listeners ---
+        buttons.white.addEventListener('click', () => showScreen('windowsScreen'));
+        elements.gameIcon.addEventListener('click', () => { currentQuiz1Index = 0; loadQuiz1Question(); showScreen('quizScreen'); });
+        buttons.toEnd.addEventListener('click', () => { showScreen('endScreen'); elements.endMessage.textContent = ""; clearAllTimers(); timers.push(setTimeout(() => { elements.endMessage.textContent = "Porque vc ainda esta aqui? Saia logo!"; timers.push(setTimeout(() => { showScreen('angryScreen'); timers.push(setTimeout(() => { showScreen('jumpscareScreen'); timers.push(setTimeout(() => { showScreen('connectionLostScreen'); timers.push(setTimeout(() => { showScreen('handScreen'); }, 7000)); }, 2000)); }, 3000)); }, 7000)); }, 24000)); });
+        elements.hand.addEventListener('click', () => { showScreen('secondQuizScreen'); audio.quiz.currentTime = 0; audio.quiz.play(); currentQuiz2Index = 0; loadQuiz2Question(); });
+        buttons.fight.addEventListener('click', handlePlayerAttack);
+        elements.crown.addEventListener('click', showCredits);
+        buttons.retry.addEventListener('click', () => triggerBossFightIntro(lastBossDefeated));
+
+        // --- Início ---
+        window.onresize = setupCanvas;
+        initializeGame();
+    });
+    </script>
+</body>
+</html>
