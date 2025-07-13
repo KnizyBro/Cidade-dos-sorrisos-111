@@ -113,8 +113,9 @@
     
     <!-- Telas do Final Secreto -->
     <div id="bwIntroScreen" class="screen bg-black text-white grayscale">
-        <h1 class="text-9xl mb-8">:D</h1>
-        <p id="bwIntroText" class="text-2xl"></p>
+        <h1 id="bwFace" class="text-9xl mb-8"></h1>
+        <p id="bwIntroText" class="text-2xl p-4"></p>
+        <button id="dialogueButton" class="hidden mt-8 px-8 py-4 bg-gray-300 text-black font-bold rounded-lg shadow-lg">Mande a resposta</button>
     </div>
     <div id="chemQuizScreen" class="screen bg-black text-white p-4 grayscale">
         <div class="bg-white bg-opacity-10 p-8 rounded-lg shadow-2xl max-w-4xl w-full">
@@ -130,6 +131,7 @@
         <canvas id="bossCanvas"></canvas>
         <div class="fight-button-container">
             <button id="fightButton" class="px-10 py-5 bg-yellow-400 text-black font-bold rounded-full shadow-xl transform hover:scale-110 transition-transform">Lutar</button>
+            <button id="healButton" class="ml-4 px-10 py-5 bg-green-500 text-white font-bold rounded-full shadow-xl transform hover:scale-110 transition-transform">Curar (<span id="healChargesText">3</span>)</button>
         </div>
     </div>
     <div id="victoryScreen" class="screen bg-black text-yellow-300">
@@ -165,6 +167,8 @@
             toEnd: document.getElementById('toEndButton'),
             fight: document.getElementById('fightButton'),
             retry: document.getElementById('retryButton'),
+            dialogue: document.getElementById('dialogueButton'),
+            heal: document.getElementById('healButton'),
         };
         const elements = {
             smileText: document.getElementById('smileText'),
@@ -173,7 +177,9 @@
             hand: document.getElementById('hand'),
             crown: document.getElementById('crown'),
             bossIntroText: document.getElementById('bossIntroText'),
+            bwFace: document.getElementById('bwFace'),
             bwIntroText: document.getElementById('bwIntroText'),
+            healChargesText: document.getElementById('healChargesText'),
         };
 
         // --- Variáveis de Estado do Jogo ---
@@ -186,28 +192,47 @@
         // --- Variáveis da Batalha ---
         const canvas = document.getElementById('bossCanvas');
         const ctx = canvas.getContext('2d');
-        let playerHealth, maxPlayerHealth, bossHealth, maxBossHealth, bossPhase;
+        let playerHealth, maxPlayerHealth, bossHealth, maxBossHealth, bossPhase, healCharges;
         let currentTurn;
         let player, projectiles, gameLoopId;
         
         // --- Dados dos Quizzes ---
         const quiz1Data = [ { question: "Quem que fez esse quiz?", answers: ["Dolly", "Luan", "Ian", "Emanuel"], correct: "Luan" }, { question: "Qual e o nome do roblox do criador desse quiz?", answers: ["SamucaBR", "DollyBR", "Knizy", "IanGamer"], correct: "Knizy" }, { question: "Qual sao os amigos dele?", answers: ["Maria, João, Pedro", "Ana, Bia, Carla", "Samuca, Dolly, Ian e Emanuel", "Lucas, Tiago, Mateus"], correct: "Samuca, Dolly, Ian e Emanuel" } ];
         const quiz2Data = [ { question: "Qual foi a primeira pessoa que o dolly gostou", answers: ["Maria", "Ana", "Alice ou baby alice ou lice", "Carla"], correct: "Alice ou baby alice ou lice" }, { question: "Qual e o maior medo do samuca?", answers: ["Baratas", "Altura", "Undyne imortal ou Doki Doki", "Escuro"], correct: "Undyne imortal ou Doki Doki" }, { question: "Qual%#@%^%^#5168321563156783156723", isGlitched: true } ];
-        const chemQuizData = [
-            { question: "Se 50,0 g de benzeno (C₆H₆) a 25 °C absorvem 2,71 kJ de calor, qual será a temperatura final? (c = 1,72 J/g·°C)", answers: ["42,1 °C", "aproximadamente 56,5 °C", "31,5 °C", "81,5 °C"], correct: "aproximadamente 56,5 °C" },
-            { question: "Em um ensaio de espectroscopia de absorção atômica, como se calcula a concentração de um elemento em ppb a partir de dados instrumentais?", answers: ["Pela curva de calibração usando padrões", "Resposta simples: converte diretamente a absorbância em concentração (µg/L = ppb)", "Usando a Lei de Beer-Lambert sem calibração", "Medindo a emissão em vez da absorção"], correct: "Resposta simples: converte diretamente a absorbância em concentração (µg/L = ppb)" },
-            { question: "Qual o número de coordenação de um íon central em um complexo octaédrico e que geometria ele apresenta?", answers: ["Coordenação 4, tetraédrica", "Coordenação 8, cúbica", "octaédrica.", "Coordenação 6, planar quadrada"], correct: "octaédrica." },
-            { question: "Por que é um desafio construir uma bateria de lítio-ar (Li–O₂) prática? Identifique um dos principais obstáculos.", answers: ["A reatividade do eletrólito com o metal de lítio.", "A formação de peróxidos/superóxidos que degradam os componentes.", "A baixa densidade de energia.", "(Esse eu nao sei)"], correct: "(Esse eu nao sei)" }
-        ];
+        const chemQuizData = [ { question: "Se 50,0 g de benzeno (C₆H₆) a 25 °C absorvem 2,71 kJ de calor, qual será a temperatura final? (c = 1,72 J/g·°C)", answers: ["42,1 °C", "aproximadamente 56,5 °C", "31,5 °C", "81,5 °C"], correct: "aproximadamente 56,5 °C" }, { question: "Em um ensaio de espectroscopia de absorção atômica, como se calcula a concentração de um elemento em ppb a partir de dados instrumentais?", answers: ["Pela curva de calibração usando padrões", "Resposta simples: converte diretamente a absorbância em concentração (µg/L = ppb)", "Usando a Lei de Beer-Lambert sem calibração", "Medindo a emissão em vez da absorção"], correct: "Resposta simples: converte diretamente a absorbância em concentração (µg/L = ppb)" }, { question: "Qual o número de coordenação de um íon central em um complexo octaédrico e que geometria ele apresenta?", answers: ["Coordenação 4, tetraédrica", "Coordenação 8, cúbica", "octaédrica.", "Coordenação 6, planar quadrada"], correct: "octaédrica." }, { question: "Por que é um desafio construir uma bateria de lítio-ar (Li–O₂) prática? Identifique um dos principais obstáculos.", answers: ["A reatividade do eletrólito com o metal de lítio.", "A formação de peróxidos/superóxidos que degradam os componentes.", "A baixa densidade de energia.", "(Esse eu nao sei)"], correct: "(Esse eu nao sei)" } ];
         const chemicalElements = ['H', 'He', 'Li', 'Be', 'B', 'C', 'N', 'O', 'F', 'Ne', 'Na', 'Mg', 'Al', 'Si', 'P', 'S', 'Cl', 'Ar'];
+
+        // --- Funções de Áudio Seguras ---
+        async function playAudio(audioElement) {
+            try {
+                audioElement.currentTime = 0;
+                await audioElement.play();
+            } catch (error) {
+                if (error.name !== 'AbortError') {
+                    console.error('Audio playback error:', error);
+                }
+            }
+        }
+
+        function pauseAudio(audioElement) {
+            if (!audioElement.paused) {
+                audioElement.pause();
+            }
+        }
 
         // --- Lógica de Jogo Principal ---
         function initializeGame() {
-            const completionCount = parseInt(localStorage.getItem('completionCount') || '0');
-            if (completionCount >= 3) {
+            const smileWins = parseInt(localStorage.getItem('smileCompletionCount') || '0');
+            const brotherWins = parseInt(localStorage.getItem('brotherCompletionCount') || '0');
+
+            if (brotherWins >= 3) {
+                buttons.start.textContent = "??????????";
+                buttons.start.classList.add('broken-button');
+                buttons.start.onclick = startSupremacyPath;
+            } else if (smileWins >= 3) {
                 buttons.start.textContent = "C̴l̴i̴q̴u̴e̴ ̴e̴m̴ ̴M̴i̴m̴";
                 buttons.start.classList.add('broken-button');
-                buttons.start.onclick = startSecretPath;
+                buttons.start.onclick = startBrotherPath;
             } else {
                 buttons.start.textContent = "Clique em Mim";
                 buttons.start.classList.remove('broken-button');
@@ -216,32 +241,22 @@
             resetGame();
         }
 
-        function startNormalPath() {
-            showScreen('smileScreen');
-            elements.smileText.textContent = '';
-            buttons.white.classList.add('hidden');
-            timers.push(setTimeout(() => {
-                elements.smileText.textContent = "clique no botão branco abaixo";
-                buttons.white.classList.remove('hidden');
-            }, 7000));
-        }
-
-        function startSecretPath() {
+        function startNormalPath() { showScreen('smileScreen'); elements.smileText.textContent = ''; buttons.white.classList.add('hidden'); timers.push(setTimeout(() => { elements.smileText.textContent = "clique no botão branco abaixo"; buttons.white.classList.remove('hidden'); }, 7000)); }
+        function startBrotherPath() { showScreen('bwIntroScreen'); elements.bwFace.textContent = ":D"; elements.bwIntroText.textContent = "Oh... Eu vi que vc matou meu irmao 3 vezes..."; timers.push(setTimeout(() => { elements.bwIntroText.textContent = "Eu vi tudo......................."; timers.push(setTimeout(() => { showScreen('chemQuizScreen'); currentChemQuizIndex = 0; loadChemQuizQuestion(); }, 4000)); }, 4000)); }
+        function startSupremacyPath() {
             showScreen('bwIntroScreen');
-            elements.bwIntroText.textContent = "Oh... Eu vi que vc matou meu irmao 3 vezes...";
+            elements.bwFace.textContent = ":D";
+            elements.bwIntroText.textContent = "Vc ira pagar,Vc ira pagar,Vc ira pagar...";
             timers.push(setTimeout(() => {
-                elements.bwIntroText.textContent = "Eu vi tudo.......................";
-                timers.push(setTimeout(() => {
-                    showScreen('chemQuizScreen');
-                    currentChemQuizIndex = 0;
-                    loadChemQuizQuestion();
-                }, 4000));
-            }, 4000));
+                elements.bwFace.textContent = "O_O";
+                elements.bwIntroText.textContent = "SE CURVE PARA A SUPREMACIA, O AUGE DO FULKERHENS";
+                buttons.dialogue.classList.remove('hidden');
+            }, 5000));
         }
         
         function showScreen(screenId) { Object.values(screens).forEach(s => s.classList.add('hidden')); if (screens[screenId]) screens[screenId].classList.remove('hidden'); }
         function clearAllTimers() { timers.forEach(clearTimeout); timers = []; if (gameLoopId) cancelAnimationFrame(gameLoopId); }
-        function resetGame() { clearAllTimers(); audio.quiz.pause(); audio.quiz.currentTime = 0; currentQuiz1Index = 0; currentQuiz2Index = 0; showScreen('startScreen'); }
+        function resetGame() { clearAllTimers(); pauseAudio(audio.quiz); currentQuiz1Index = 0; currentQuiz2Index = 0; showScreen('startScreen'); }
 
         // --- Lógica dos Quizzes ---
         function loadQuiz1Question() { if (currentQuiz1Index >= quiz1Data.length) { showScreen('postQuizSmileScreen'); return; } const q = quiz1Data[currentQuiz1Index]; document.getElementById('questionText').textContent = q.question; const a = document.getElementById('answersContainer'); a.innerHTML = ''; q.answers.forEach(ans => { const b = document.createElement('button'); b.textContent = ans; b.className = "w-full p-4 bg-blue-700 hover:bg-blue-600 rounded-lg transition-colors"; b.onclick = () => handleQuiz1Answer(ans); a.appendChild(b); }); }
@@ -255,16 +270,18 @@
         function setupCanvas() { const sw = window.innerWidth; const sh = window.innerHeight; canvas.width = Math.min(sw * 0.9, 800); canvas.height = Math.min(sh * 0.7, 600); }
         function triggerBossFightIntro(bossType) {
             lastBossDefeated = bossType;
-            audio.quiz.pause();
+            pauseAudio(audio.quiz);
             showScreen('bossFightScreen');
-            let introText = bossType === 'smile' ? "PORQUE?!?! VC QUER FICAR TANTO AQUI!" : "Você é persistente... e irritante.";
+            let introText = "Vamos acabar com isso.";
+            if (bossType === 'smile') introText = "PORQUE?!?! VC QUER FICAR TANTO AQUI!";
+            if (bossType === 'brother') introText = "Você é persistente... e irritante.";
+            if (bossType === 'supremacy') introText = ".............";
+            
             elements.bossIntroText.textContent = introText;
             canvas.classList.add('hidden');
             buttons.fight.classList.add('hidden');
-            timers.push(setTimeout(() => {
-                elements.bossIntroText.textContent = "Vamos acabar com isso.";
-                timers.push(setTimeout(() => startBossFight(bossType), 2000));
-            }, 4000));
+            buttons.heal.classList.add('hidden');
+            timers.push(setTimeout(() => startBossFight(bossType), 3000));
         }
 
         function startBossFight(bossType) {
@@ -275,41 +292,77 @@
             maxPlayerHealth = 100;
             playerHealth = maxPlayerHealth;
             bossPhase = 1;
+            healCharges = 3;
             
-            if (bossType === 'brother') {
-                maxBossHealth = 180; // Total HP for 2 phases
-                bossHealth = maxBossHealth;
-            } else {
-                maxBossHealth = 90;
-                bossHealth = maxBossHealth;
-            }
+            if (bossType === 'supremacy') { maxBossHealth = 200; bossHealth = maxBossHealth; }
+            else if (bossType === 'brother') { maxBossHealth = 180; bossHealth = maxBossHealth; }
+            else { maxBossHealth = 90; bossHealth = maxBossHealth; }
 
-            player = { x: canvas.width / 2, y: canvas.height / 2, radius: 15 };
+            player = { x: canvas.width / 2, y: canvas.height / 2, radius: 15, paralyzed: false };
             projectiles = [];
             
             canvas.addEventListener('mousemove', movePlayer);
             startPlayerTurn();
         }
 
-        function startPlayerTurn() { currentTurn = 'player'; buttons.fight.disabled = false; buttons.fight.classList.remove('hidden'); drawBattleState(); }
+        function startPlayerTurn() {
+            currentTurn = 'player';
+            buttons.fight.disabled = false;
+            buttons.heal.disabled = healCharges <= 0;
+            buttons.fight.classList.remove('hidden');
+            buttons.heal.classList.remove('hidden');
+            elements.healChargesText.textContent = healCharges;
+            drawBattleState();
+        }
+
         function handlePlayerAttack() {
             if (currentTurn !== 'player') return;
             bossHealth -= 30;
             buttons.fight.disabled = true;
+            buttons.heal.disabled = true;
 
-            if (lastBossDefeated === 'brother' && bossHealth <= maxBossHealth / 2 && bossPhase === 1) {
+            if ((lastBossDefeated === 'brother' || lastBossDefeated === 'supremacy') && bossHealth <= maxBossHealth / 2 && bossPhase === 1) {
                 bossPhase = 2;
             }
 
             if (bossHealth <= 0) { winGame(); } else { startBossTurn(); }
         }
 
+        function handlePlayerHeal() {
+            if (currentTurn !== 'player' || healCharges <= 0) return;
+
+            playerHealth += 80;
+            if (playerHealth > maxPlayerHealth) {
+                playerHealth = maxPlayerHealth;
+            }
+            
+            healCharges--;
+            elements.healChargesText.textContent = healCharges;
+            
+            buttons.fight.disabled = true;
+            buttons.heal.disabled = true;
+            
+            startBossTurn();
+        }
+
         function startBossTurn() {
             currentTurn = 'boss_attack';
             buttons.fight.classList.add('hidden');
+            buttons.heal.classList.add('hidden');
             projectiles = [];
-            let attackSpeed = (lastBossDefeated === 'brother' && bossPhase === 2) ? 4 : 2;
-            let numProjectiles = (lastBossDefeated === 'brother' && bossPhase === 2) ? 40 : 25;
+            
+            let isPhase2 = (bossPhase === 2);
+            let attackSpeed = isPhase2 ? 4 : 2;
+            let numProjectiles = isPhase2 ? 40 : 25;
+            let attackType = 'default';
+
+            if (lastBossDefeated === 'supremacy') {
+                attackSpeed = isPhase2 ? 5 : 3;
+                numProjectiles = isPhase2 ? 50 : 30;
+                attackType = Math.random() > 0.5 ? 'lightning' : 'elements';
+            } else if (lastBossDefeated === 'brother') {
+                attackType = 'elements';
+            }
 
             for (let i = 0; i < numProjectiles; i++) {
                 const side = Math.floor(Math.random() * 4);
@@ -321,10 +374,14 @@
                 else { y = canvas.height; x = Math.random() * canvas.width; vx = 0; vy = -speed; }
                 
                 let text = null;
-                if (lastBossDefeated === 'brother') {
+                let type = 'bullet';
+                if (attackType === 'elements') {
                     text = chemicalElements[Math.floor(Math.random() * chemicalElements.length)];
+                    type = 'text';
+                } else if (attackType === 'lightning') {
+                    type = 'lightning';
                 }
-                projectiles.push({ x, y, vx, vy, radius: lastBossDefeated === 'brother' ? 12 : 8, text });
+                projectiles.push({ x, y, vx, vy, radius: type === 'text' ? 12 : 8, text, type });
             }
             gameLoopId = requestAnimationFrame(gameLoop);
             timers.push(setTimeout(() => { cancelAnimationFrame(gameLoopId); startPlayerTurn(); }, 5000));
@@ -332,7 +389,20 @@
         
         function gameLoop() { updateProjectiles(); checkCollisions(); drawBattleState(); if (currentTurn === 'boss_attack') gameLoopId = requestAnimationFrame(gameLoop); }
         function updateProjectiles() { projectiles.forEach(p => { p.x += p.vx; p.y += p.vy; }); }
-        function checkCollisions() { projectiles.forEach(p => { const dist = Math.hypot(player.x - p.x, player.y - p.y); if (dist < player.radius + p.radius) { playerHealth -= 10; p.x = -1000; if (playerHealth <= 0) loseGame(); } }); }
+        function checkCollisions() {
+            projectiles.forEach(p => {
+                const dist = Math.hypot(player.x - p.x, player.y - p.y);
+                if (dist < player.radius + p.radius) {
+                    playerHealth -= 10;
+                    p.x = -1000; // Remove projectile
+                    if (p.type === 'lightning' && !player.paralyzed) {
+                        player.paralyzed = true;
+                        setTimeout(() => player.paralyzed = false, 1500); // Paralyzed for 1.5s
+                    }
+                    if (playerHealth <= 0) loseGame();
+                }
+            });
+        }
 
         function drawBattleState() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -340,10 +410,24 @@
             drawHealthBars();
 
             if (currentTurn === 'boss_attack') {
-                ctx.fillStyle = 'cyan'; ctx.beginPath(); ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2); ctx.fill();
+                // Draw player
+                ctx.fillStyle = player.paralyzed ? 'gray' : 'cyan';
+                ctx.beginPath();
+                ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
+                ctx.fill();
+                if (player.paralyzed) {
+                    ctx.fillStyle = 'yellow';
+                    ctx.font = "20px 'Press Start 2P'";
+                    ctx.fillText('Zzz', player.x + 25, player.y - 25);
+                }
+
+                // Draw projectiles
                 projectiles.forEach(p => {
-                    if (p.text) {
+                    if (p.type === 'text') {
                         ctx.font = "20px 'Press Start 2P'"; ctx.fillStyle = 'lime'; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(p.text, p.x, p.y);
+                    } else if (p.type === 'lightning') {
+                        ctx.fillStyle = 'yellow';
+                        ctx.fillRect(p.x - 2, p.y - 10, 4, 20);
                     } else {
                         ctx.fillStyle = 'white'; ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2); ctx.fill();
                     }
@@ -356,50 +440,63 @@
         function drawBossFace() {
             let face = ':(';
             if (lastBossDefeated === 'brother') face = bossPhase === 1 ? ':D' : '>:D';
+            if (lastBossDefeated === 'supremacy') face = 'O_O';
+            
             ctx.font = "80px 'Press Start 2P'"; ctx.fillStyle = "red"; ctx.textAlign = "center";
-            const shakeX = (Math.random() - 0.5) * (1 - (bossHealth / maxBossHealth)) * 10;
-            const shakeY = (Math.random() - 0.5) * (1 - (bossHealth / maxBossHealth)) * 10;
+            const shakeX = (Math.random() - 0.5) * (1 - (bossHealth / maxBossHealth)) * 15;
+            const shakeY = (Math.random() - 0.5) * (1 - (bossHealth / maxBossHealth)) * 15;
             ctx.fillText(face, canvas.width / 2 + shakeX, 120 + shakeY);
         }
 
         function drawHealthBars() {
-            let bossName = lastBossDefeated === 'brother' ? 'IRMÃO' : 'SORRISO';
+            let bossName = 'SORRISO';
+            if (lastBossDefeated === 'brother') bossName = 'IRMÃO';
+            if (lastBossDefeated === 'supremacy') bossName = 'SUPREMACIA';
+
             ctx.fillStyle = '#555'; ctx.fillRect(10, 10, canvas.width - 20, 30);
-            ctx.fillStyle = 'red'; ctx.fillRect(10, 10, (canvas.width - 20) * (bossHealth / maxBossHealth), 30);
-            if (lastBossDefeated === 'brother' && bossPhase === 2) {
-                ctx.fillStyle = 'purple';
-                ctx.fillRect(10, 10, (canvas.width - 20) * (bossHealth / maxBossHealth), 30);
-            }
+            let healthColor = 'red';
+            if (bossPhase === 2) healthColor = 'purple';
+            if (lastBossDefeated === 'supremacy') healthColor = bossPhase === 1 ? 'orange' : '#FF1493';
+            ctx.fillStyle = healthColor;
+            ctx.fillRect(10, 10, (canvas.width - 20) * (bossHealth / maxBossHealth), 30);
+            
             ctx.fillStyle = 'white'; ctx.font = "20px 'Press Start 2P'"; ctx.textAlign = "center"; ctx.fillText(bossName, canvas.width / 2, 35);
             ctx.fillStyle = '#555'; ctx.fillRect(10, canvas.height - 40, canvas.width - 20, 30);
             ctx.fillStyle = 'cyan'; ctx.fillRect(10, canvas.height - 40, (canvas.width - 20) * (playerHealth / maxPlayerHealth), 30);
             ctx.fillStyle = 'white'; ctx.fillText(`VOCÊ`, canvas.width / 2, canvas.height - 15);
         }
 
-        function movePlayer(e) { const rect = canvas.getBoundingClientRect(); player.x = e.clientX - rect.left; player.y = e.clientY - rect.top; }
+        function movePlayer(e) { if (player && !player.paralyzed) { const rect = canvas.getBoundingClientRect(); player.x = e.clientX - rect.left; player.y = e.clientY - rect.top; } }
         
         function winGame() {
             clearAllTimers();
-            const completionCount = parseInt(localStorage.getItem('completionCount') || '0');
-            localStorage.setItem('completionCount', completionCount + 1);
+            if (lastBossDefeated === 'smile') {
+                const count = parseInt(localStorage.getItem('smileCompletionCount') || '0');
+                localStorage.setItem('smileCompletionCount', count + 1);
+            } else if (lastBossDefeated === 'brother') {
+                const count = parseInt(localStorage.getItem('brotherCompletionCount') || '0');
+                localStorage.setItem('brotherCompletionCount', count + 1);
+            }
             showScreen('victoryScreen');
         }
 
-        function showCredits() {
-            showScreen('creditsScreen');
-            timers.push(setTimeout(initializeGame, 15000)); // Reinicia o jogo após 15s
-        }
-
+        function showCredits() { showScreen('creditsScreen'); timers.push(setTimeout(initializeGame, 15000)); }
         function loseGame() { clearAllTimers(); showScreen('gameOverScreen'); }
 
         // --- Event Listeners ---
         buttons.white.addEventListener('click', () => showScreen('windowsScreen'));
         elements.gameIcon.addEventListener('click', () => { currentQuiz1Index = 0; loadQuiz1Question(); showScreen('quizScreen'); });
         buttons.toEnd.addEventListener('click', () => { showScreen('endScreen'); elements.endMessage.textContent = ""; clearAllTimers(); timers.push(setTimeout(() => { elements.endMessage.textContent = "Porque vc ainda esta aqui? Saia logo!"; timers.push(setTimeout(() => { showScreen('angryScreen'); timers.push(setTimeout(() => { showScreen('jumpscareScreen'); timers.push(setTimeout(() => { showScreen('connectionLostScreen'); timers.push(setTimeout(() => { showScreen('handScreen'); }, 7000)); }, 2000)); }, 3000)); }, 7000)); }, 24000)); });
-        elements.hand.addEventListener('click', () => { showScreen('secondQuizScreen'); audio.quiz.currentTime = 0; audio.quiz.play(); currentQuiz2Index = 0; loadQuiz2Question(); });
+        elements.hand.addEventListener('click', () => { showScreen('secondQuizScreen'); playAudio(audio.quiz); currentQuiz2Index = 0; loadQuiz2Question(); });
         buttons.fight.addEventListener('click', handlePlayerAttack);
+        buttons.heal.addEventListener('click', handlePlayerHeal);
         elements.crown.addEventListener('click', showCredits);
         buttons.retry.addEventListener('click', () => triggerBossFightIntro(lastBossDefeated));
+        buttons.dialogue.addEventListener('click', () => {
+            buttons.dialogue.classList.add('hidden');
+            elements.bwIntroText.textContent = "Voce: Se voce e tao bom assim, porque vc perdeu?";
+            timers.push(setTimeout(() => triggerBossFightIntro('supremacy'), 4000));
+        });
 
         // --- Início ---
         window.onresize = setupCanvas;
