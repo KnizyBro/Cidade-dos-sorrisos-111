@@ -112,6 +112,7 @@
     <!-- UI Global -->
     <div class="global-button-container">
         <button id="samukaButton" class="px-4 py-2 bg-yellow-600 text-white rounded-lg shadow-lg hover:bg-yellow-500 transition-colors">Eu sou o Samuka</button>
+        <button id="dollyButton" class="px-4 py-2 bg-pink-600 text-white rounded-lg shadow-lg hover:bg-pink-500 transition-colors">Eu sou o Dolly</button>
         <button id="saveButton" class="px-4 py-2 bg-blue-600 text-white rounded-lg shadow-lg hover:bg-blue-500 transition-colors">Salvar Jogo</button>
     </div>
     <div id="loadSaveModal" class="screen modal hidden">
@@ -130,10 +131,18 @@
             <button id="samukaPasswordSubmit" class="ml-2 px-4 py-2 bg-yellow-600 rounded-lg hover:bg-yellow-500">Entrar</button>
         </div>
     </div>
-    <div id="samukaModeScreen" class="screen modal hidden">
-         <div class="bg-gray-900 p-8 rounded-lg text-white shadow-2xl border-4 border-yellow-500 max-w-3xl w-full">
-            <h2 class="text-3xl mb-4 text-yellow-400">Modo Samuka Ativado</h2>
-            <p class="mb-6">Spoilers: Vai ter batalhas ultra dificeis, com stun entre outras...</p>
+    <div id="dollyPasswordModal" class="screen modal hidden">
+        <div class="bg-gray-800 p-8 rounded-lg text-white shadow-2xl">
+            <h2 class="text-2xl mb-4">Senha do Dolly:</h2>
+            <input type="password" id="dollyPasswordInput" class="p-2 rounded-lg text-black">
+            <button id="dollyPasswordSubmit" class="ml-2 px-4 py-2 bg-pink-600 rounded-lg hover:bg-pink-500">Entrar</button>
+        </div>
+    </div>
+    <div id="secretModeScreen" class="screen modal hidden">
+         <div id="secretModePanel" class="bg-gray-900 p-8 rounded-lg text-white shadow-2xl border-4 max-w-3xl w-full">
+            <h2 id="secretModeTitle" class="text-3xl mb-4"></h2>
+            <p id="secretModeSpoilers" class="mb-2 text-left"></p>
+            <p id="secretModeExclusive" class="mb-6 text-left text-pink-400"></p>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                 <button class="teleport-button px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded" data-boss="smile">Teleporte: :(</button>
                 <button class="teleport-button px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded" data-boss="brother">Teleporte: :D</button>
@@ -142,10 +151,10 @@
                 <button class="teleport-button px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded" data-boss="colon">Teleporte: :]</button>
             </div>
             <div class="mt-4">
-                <input type="text" id="samukaCommandInput" placeholder="Digite um comando..." class="p-2 rounded-lg text-black w-2/3">
-                <button id="samukaCommandSubmit" class="ml-2 px-4 py-2 bg-red-700 rounded-lg hover:bg-red-600">Executar</button>
+                <input type="text" id="secretCommandInput" placeholder="Digite um comando..." class="p-2 rounded-lg text-black w-2/3">
+                <button id="secretCommandSubmit" class="ml-2 px-4 py-2 bg-red-700 rounded-lg hover:bg-red-600">Executar</button>
             </div>
-            <button id="samukaContinueButton" class="mt-6 px-8 py-3 bg-blue-600 rounded-lg hover:bg-blue-500">Continuar o jogo anterior</button>
+            <button id="secretContinueButton" class="mt-6 px-8 py-3 bg-blue-600 rounded-lg hover:bg-blue-500">Continuar o jogo anterior</button>
         </div>
     </div>
 
@@ -236,9 +245,11 @@
             confirmLoad: document.getElementById('confirmLoadButton'),
             denyLoad: document.getElementById('denyLoadButton'),
             samuka: document.getElementById('samukaButton'),
+            dolly: document.getElementById('dollyButton'),
             samukaPasswordSubmit: document.getElementById('samukaPasswordSubmit'),
-            samukaContinue: document.getElementById('samukaContinueButton'),
-            samukaCommandSubmit: document.getElementById('samukaCommandSubmit'),
+            dollyPasswordSubmit: document.getElementById('dollyPasswordSubmit'),
+            secretContinue: document.getElementById('secretContinueButton'),
+            secretCommandSubmit: document.getElementById('secretCommandSubmit'),
         };
         const elements = {
             smileText: document.getElementById('smileText'),
@@ -256,7 +267,12 @@
             newEndMessage: document.getElementById('newEndMessage'),
             gameOverMessage: document.getElementById('gameOverMessage'),
             samukaPasswordInput: document.getElementById('samukaPasswordInput'),
-            samukaCommandInput: document.getElementById('samukaCommandInput'),
+            dollyPasswordInput: document.getElementById('dollyPasswordInput'),
+            secretCommandInput: document.getElementById('secretCommandInput'),
+            secretModeTitle: document.getElementById('secretModeTitle'),
+            secretModePanel: document.getElementById('secretModePanel'),
+            secretModeSpoilers: document.getElementById('secretModeSpoilers'),
+            secretModeExclusive: document.getElementById('secretModeExclusive'),
         };
 
         // --- Variáveis de Estado do Jogo ---
@@ -265,8 +281,9 @@
         let lastBossDefeated = null;
         let currentStoryPoint = 'start';
         let samukaModeActive = false;
-        let samukaAttackBoost = 1;
-        let samukaHealthBoost = 0;
+        let dollyModeActive = false;
+        let secretAttackBoost = 1;
+        let secretHealthBoost = 0;
         
         // --- Variáveis da Batalha ---
         const canvas = document.getElementById('bossCanvas');
@@ -287,28 +304,29 @@
         function pauseAudio(audioElement) { if (!audioElement.paused) { audioElement.pause(); } }
 
         // --- Lógica de Jogo Principal e Save/Load ---
-        function saveGame() {
-            const gameState = {
-                storyPoint: currentStoryPoint,
-                smileWins: localStorage.getItem('smileCompletionCount') || '0',
-                brotherWins: localStorage.getItem('brotherCompletionCount') || '0',
-                supremacyWins: localStorage.getItem('supremacyCompletionCount') || '0',
-                selfQuizCompleted: localStorage.getItem('selfQuizCompleted') || 'false',
+        function getGameState() {
+            const savedStateJSON = localStorage.getItem('gameState');
+            if (savedStateJSON) {
+                return JSON.parse(savedStateJSON);
+            }
+            return {
+                storyPoint: 'start',
+                smileWins: 0,
+                brotherWins: 0,
+                supremacyWins: 0,
+                selfQuizCompleted: false,
             };
-            localStorage.setItem('gameState', JSON.stringify(gameState));
+        }
+
+        function saveGame(state) {
+            state.storyPoint = currentStoryPoint;
+            localStorage.setItem('gameState', JSON.stringify(state));
             alert('Jogo Salvo!');
         }
 
         function loadGame() {
-            const savedStateJSON = localStorage.getItem('gameState');
-            if (savedStateJSON) {
-                const savedState = JSON.parse(savedStateJSON);
-                localStorage.setItem('smileCompletionCount', savedState.smileWins);
-                localStorage.setItem('brotherCompletionCount', savedState.brotherWins);
-                localStorage.setItem('supremacyCompletionCount', savedState.supremacyWins);
-                localStorage.setItem('selfQuizCompleted', savedState.selfQuizCompleted);
-                resumeFromState(savedState.storyPoint);
-            }
+            const gameState = getGameState();
+            resumeFromState(gameState.storyPoint);
         }
         
         function resumeFromState(storyPoint) {
@@ -327,13 +345,10 @@
         
         function clearAllProgress() {
             localStorage.removeItem('gameState');
-            localStorage.removeItem('smileCompletionCount');
-            localStorage.removeItem('brotherCompletionCount');
-            localStorage.removeItem('supremacyCompletionCount');
-            localStorage.removeItem('selfQuizCompleted');
             samukaModeActive = false;
-            samukaAttackBoost = 1;
-            samukaHealthBoost = 0;
+            dollyModeActive = false;
+            secretAttackBoost = 1;
+            secretHealthBoost = 0;
         }
 
         function resetGame() {
@@ -347,25 +362,21 @@
 
         function initializeGame(skipLoadCheck = false) {
             resetGame();
-            const savedState = localStorage.getItem('gameState');
-            if (savedState && !skipLoadCheck) {
+            const gameState = getGameState();
+            if (gameState.storyPoint !== 'start' && !skipLoadCheck) {
                 showScreen('loadSaveModal');
                 return;
             }
             
-            const smileWins = parseInt(localStorage.getItem('smileCompletionCount') || '0');
-            const brotherWins = parseInt(localStorage.getItem('brotherCompletionCount') || '0');
-            const supremacyWins = parseInt(localStorage.getItem('supremacyCompletionCount') || '0');
-
             buttons.start.classList.remove('broken-button');
-            if (supremacyWins >= 1) {
+            if (gameState.supremacyWins >= 1) {
                 buttons.start.textContent = "Nova Jornada";
                 buttons.start.onclick = startNewJourneyPath;
-            } else if (brotherWins >= 3) {
+            } else if (gameState.brotherWins >= 3) {
                 buttons.start.textContent = "??????????";
                 buttons.start.classList.add('broken-button');
                 buttons.start.onclick = startSupremacyPath;
-            } else if (smileWins >= 3) {
+            } else if (gameState.smileWins >= 3) {
                 buttons.start.textContent = "C̴l̴i̴q̴u̴e̴ ̴e̴m̴ ̴M̴i̴m̴";
                 buttons.start.classList.add('broken-button');
                 buttons.start.onclick = startBrotherPath;
@@ -400,7 +411,7 @@
         function handleQuiz2Answer(sel) { if (sel === quiz2Data[currentQuiz2Index].correct) { currentQuiz2Index++; loadQuiz2Question(); } else { screens.secondQuizScreen.classList.add('animate-pulse'); setTimeout(() => screens.secondQuizScreen.classList.remove('animate-pulse'), 500); } }
         function loadChemQuizQuestion() { if (currentChemQuizIndex >= chemQuizData.length) { triggerBossFightIntro('brother'); return; } const q = chemQuizData[currentChemQuizIndex]; document.getElementById('chemQuestionText').textContent = q.question; const a = document.getElementById('chemAnswersContainer'); a.innerHTML = ''; q.answers.forEach(ans => { const b = document.createElement('button'); b.textContent = ans; b.className = "w-full p-4 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"; b.onclick = () => handleChemQuizAnswer(ans); a.appendChild(b); }); }
         function handleChemQuizAnswer(sel) { if (sel === chemQuizData[currentChemQuizIndex].correct) { currentChemQuizIndex++; loadChemQuizQuestion(); } else { screens.chemQuizScreen.classList.add('animate-pulse'); setTimeout(() => screens.chemQuizScreen.classList.remove('animate-pulse'), 500); } }
-        function loadSelfQuizQuestion() { if (currentSelfQuizIndex >= selfQuizData.length) { localStorage.setItem('selfQuizCompleted', 'true'); currentStoryPoint = 'beforeFrogBoss'; showScreen('newSmileScreen'); elements.newSmileText.textContent = "Lute com ele!"; buttons.newContinue.classList.add('hidden'); timers.push(setTimeout(() => triggerBossFightIntro('frog'), 3000)); return; } const q = selfQuizData[currentSelfQuizIndex]; document.getElementById('selfQuizQuestionText').textContent = q.question; const a = document.getElementById('selfQuizAnswersContainer'); a.innerHTML = ''; q.answers.forEach(ans => { const b = document.createElement('button'); b.textContent = ans; b.className = "w-full p-4 bg-gray-400 hover:bg-gray-500 rounded-lg transition-colors"; b.onclick = () => handleSelfQuizAnswer(ans); a.appendChild(b); }); }
+        function loadSelfQuizQuestion() { if (currentSelfQuizIndex >= selfQuizData.length) { let state = getGameState(); state.selfQuizCompleted = true; saveGame(state); currentStoryPoint = 'beforeFrogBoss'; showScreen('newSmileScreen'); elements.newSmileText.textContent = "Lute com ele!"; buttons.newContinue.classList.add('hidden'); timers.push(setTimeout(() => triggerBossFightIntro('frog'), 3000)); return; } const q = selfQuizData[currentSelfQuizIndex]; document.getElementById('selfQuizQuestionText').textContent = q.question; const a = document.getElementById('selfQuizAnswersContainer'); a.innerHTML = ''; q.answers.forEach(ans => { const b = document.createElement('button'); b.textContent = ans; b.className = "w-full p-4 bg-gray-400 hover:bg-gray-500 rounded-lg transition-colors"; b.onclick = () => handleSelfQuizAnswer(ans); a.appendChild(b); }); }
         function handleSelfQuizAnswer(sel) { if (sel === selfQuizData[currentSelfQuizIndex].correct) { currentSelfQuizIndex++; loadSelfQuizQuestion(); } else { screens.selfQuizScreen.classList.add('animate-pulse'); setTimeout(() => screens.selfQuizScreen.classList.remove('animate-pulse'), 500); } }
 
         // --- Lógica da Batalha ---
@@ -427,7 +438,7 @@
             elements.bossIntroText.textContent = '';
             canvas.classList.remove('hidden');
             
-            maxPlayerHealth = 100 + samukaHealthBoost;
+            maxPlayerHealth = 100 + secretHealthBoost;
             playerHealth = maxPlayerHealth;
             bossPhase = 1;
             healCharges = 3;
@@ -461,7 +472,7 @@
 
         function handlePlayerAttack() {
             if (currentTurn !== 'player') return;
-            bossHealth -= (30 * playerAttackModifier) * samukaAttackBoost;
+            bossHealth -= (30 * playerAttackModifier) * secretAttackBoost;
             endPlayerTurn();
             if (bossHealth <= 0) { winGame(); } else { startBossTurn(); }
         }
@@ -615,11 +626,14 @@
         
         function winGame() {
             clearAllTimers();
-            if (lastBossDefeated === 'smile') { localStorage.setItem('smileCompletionCount', (parseInt(localStorage.getItem('smileCompletionCount') || '0') + 1)); }
-            else if (lastBossDefeated === 'brother') { localStorage.setItem('brotherCompletionCount', (parseInt(localStorage.getItem('brotherCompletionCount') || '0') + 1)); }
-            else if (lastBossDefeated === 'supremacy') { localStorage.setItem('supremacyCompletionCount', (parseInt(localStorage.getItem('supremacyCompletionCount') || '0') + 1)); }
+            const state = getGameState();
+            if (lastBossDefeated === 'smile') { state.smileWins++; }
+            else if (lastBossDefeated === 'brother') { state.brotherWins++; }
+            else if (lastBossDefeated === 'supremacy') { state.supremacyWins++; }
             else if (lastBossDefeated === 'frog') { currentStoryPoint = 'beforeColonBoss'; showScreen('xpGainScreen'); elements.xpText.textContent = "Seu XP subiu para 1"; timers.push(setTimeout(() => { showScreen('newSmileScreen'); elements.newSmileText.textContent = "isso que vc viu, e xp, Basicamente o xp e seu nivel de habilidade"; timers.push(setTimeout(() => { showScreen('newEndScreen'); elements.newEndMessage.textContent = ""; timers.push(setTimeout(() => { elements.newEndMessage.textContent = "- vc e mais chato do que eu pensava..."; timers.push(setTimeout(() => triggerBossFightIntro('colon'), 3000)); }, 8000)); }, 4000)); }, 3000)); return; }
             
+            saveGame(state);
+
             if (lastBossDefeated === 'supremacy') {
                 startNewJourneyPath();
             } else {
@@ -650,8 +664,8 @@
         buttons.dialogue.addEventListener('click', () => { buttons.dialogue.classList.add('hidden'); elements.bwIntroText.textContent = "Voce: Se voce e tao bom assim, porque vc perdeu?"; timers.push(setTimeout(() => triggerBossFightIntro('supremacy'), 4000)); });
         
         buttons.newStart.addEventListener('click', () => {
-            const quizCompleted = localStorage.getItem('selfQuizCompleted') === 'true';
-            if (quizCompleted) {
+            const gameState = getGameState();
+            if (gameState.selfQuizCompleted) {
                 currentStoryPoint = 'beforeFrogBoss';
                 showScreen('newSmileScreen');
                 elements.newSmileText.textContent = "Você de novo? Lute com este sapo!";
@@ -668,51 +682,110 @@
 
         buttons.newContinue.addEventListener('click', () => showScreen('photoButtonScreen'));
         buttons.photo.addEventListener('click', () => { showScreen('selfQuizScreen'); currentSelfQuizIndex = 0; loadSelfQuizQuestion(); });
-        buttons.save.addEventListener('click', saveGame);
+        buttons.save.addEventListener('click', () => saveGame(getGameState()));
         buttons.confirmLoad.addEventListener('click', () => { showScreen('startScreen'); loadGame(); });
         buttons.denyLoad.addEventListener('click', () => { clearAllProgress(); initializeGame(true); });
         
         buttons.samuka.addEventListener('click', () => {
             if (samukaModeActive) {
-                showScreen('samukaModeScreen');
+                elements.secretModeTitle.textContent = "Modo Samuka Ativado";
+                elements.secretModePanel.classList.remove('border-pink-500');
+                elements.secretModePanel.classList.add('border-yellow-500');
+                elements.secretModeExclusive.classList.add('hidden');
+                showScreen('secretModeScreen');
             } else {
                 showScreen('samukaPasswordModal');
+            }
+        });
+
+        buttons.dolly.addEventListener('click', () => {
+            if (dollyModeActive) {
+                elements.secretModeTitle.textContent = "Modo Dolly Ativado";
+                elements.secretModePanel.classList.remove('border-yellow-500');
+                elements.secretModePanel.classList.add('border-pink-500');
+                elements.secretModeExclusive.classList.remove('hidden');
+                showScreen('secretModeScreen');
+            } else {
+                showScreen('dollyPasswordModal');
             }
         });
 
         buttons.samukaPasswordSubmit.addEventListener('click', () => {
             if (elements.samukaPasswordInput.value === 'SamukinhaAmigo12') {
                 samukaModeActive = true;
-                showScreen('samukaModeScreen');
+                elements.secretModeTitle.textContent = "Modo Samuka Ativado";
+                elements.secretModePanel.classList.remove('border-pink-500');
+                elements.secretModePanel.classList.add('border-yellow-500');
+                elements.secretModeExclusive.classList.add('hidden');
+                showScreen('secretModeScreen');
                 screens.samukaPasswordModal.classList.add('hidden');
                 elements.samukaPasswordInput.value = '';
             } else {
                 alert('Senha incorreta!');
             }
         });
+        
+        buttons.dollyPasswordSubmit.addEventListener('click', () => {
+            if (elements.dollyPasswordInput.value === 'DollyAmigo111') {
+                dollyModeActive = true;
+                elements.secretModeTitle.textContent = "Modo Dolly Ativado";
+                elements.secretModePanel.classList.remove('border-yellow-500');
+                elements.secretModePanel.classList.add('border-pink-500');
+                elements.secretModeExclusive.innerHTML = "Comandos Exclusivos Dolly:<br>'win battle', 'skip quiz', 'unlock all'";
+                elements.secretModeExclusive.classList.remove('hidden');
+                showScreen('secretModeScreen');
+                screens.dollyPasswordModal.classList.add('hidden');
+                elements.dollyPasswordInput.value = '';
+            } else {
+                alert('Senha incorreta!');
+            }
+        });
 
-        buttons.samukaCommandSubmit.addEventListener('click', () => {
-            const command = elements.samukaCommandInput.value.trim();
+        buttons.secretCommandSubmit.addEventListener('click', () => {
+            const command = elements.secretCommandInput.value.trim();
             if (command === 'set attaque +9999999') {
-                samukaAttackBoost = 9999999;
+                secretAttackBoost = 9999999;
                 alert('Comando de ataque ativado!');
             } else if (command === 'set live +9999999') {
-                samukaHealthBoost = 9999999;
+                secretHealthBoost = 9999999;
                 alert('Comando de vida ativado!');
+            } else if (dollyModeActive && command === 'win battle') {
+                if (!screens.bossFightScreen.classList.contains('hidden')) {
+                    winGame();
+                    alert('Batalha vencida!');
+                } else {
+                    alert('Comando só pode ser usado em batalha.');
+                }
+            } else if (dollyModeActive && command === 'skip quiz') {
+                if (!screens.quizScreen.classList.contains('hidden')) { handleQuiz1Answer(quiz1Data[currentQuiz1Index].correct); handleQuiz1Answer(quiz1Data[currentQuiz1Index].correct); handleQuiz1Answer(quiz1Data[currentQuiz1Index].correct); }
+                else if (!screens.secondQuizScreen.classList.contains('hidden')) { handleQuiz2Answer(quiz2Data[currentQuiz2Index].correct); handleQuiz2Answer(quiz2Data[currentQuiz2Index].correct); handleQuiz2Answer(quiz2Data[currentQuiz2Index].correct); }
+                else if (!screens.chemQuizScreen.classList.contains('hidden')) { handleChemQuizAnswer(chemQuizData[currentChemQuizIndex].correct); handleChemQuizAnswer(chemQuizData[currentChemQuizIndex].correct); handleChemQuizAnswer(chemQuizData[currentChemQuizIndex].correct); handleChemQuizAnswer(chemQuizData[currentChemQuizIndex].correct); }
+                else if (!screens.selfQuizScreen.classList.contains('hidden')) { handleSelfQuizAnswer(selfQuizData[currentSelfQuizIndex].correct); handleSelfQuizAnswer(selfQuizData[currentSelfQuizIndex].correct); handleSelfQuizAnswer(selfQuizData[currentSelfQuizIndex].correct); }
+                else { alert('Nenhum quiz ativo.'); return; }
+                alert('Quiz completo!');
+            } else if (dollyModeActive && command === 'unlock all') {
+                let state = getGameState();
+                state.smileWins = 3;
+                state.brotherWins = 3;
+                state.supremacyWins = 1;
+                state.selfQuizCompleted = true;
+                saveGame(state);
+                alert('Todo o progresso foi desbloqueado!');
+                initializeGame(true);
             } else {
-                alert('Comando desconhecido.');
+                alert('Comando desconhecido ou não permitido.');
             }
-            elements.samukaCommandInput.value = '';
+            elements.secretCommandInput.value = '';
         });
 
         document.querySelectorAll('.teleport-button').forEach(button => {
             button.addEventListener('click', (e) => {
                 const boss = e.target.dataset.boss;
-                screens.samukaModeScreen.classList.add('hidden');
+                screens.secretModeScreen.classList.add('hidden');
                 triggerBossFightIntro(boss);
             });
         });
-        buttons.samukaContinue.addEventListener('click', () => screens.samukaModeScreen.classList.add('hidden'));
+        buttons.secretContinue.addEventListener('click', () => screens.secretModeScreen.classList.add('hidden'));
 
         // --- Início ---
         window.onresize = setupCanvas;
