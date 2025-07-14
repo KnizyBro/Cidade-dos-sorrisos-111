@@ -300,6 +300,7 @@
         let secretAttackBoost = 1;
         let secretHealthBoost = 0;
         let gameState = {};
+        let isGameOver = false;
         
         // --- Variáveis da Batalha ---
         const canvas = document.getElementById('bossCanvas');
@@ -425,33 +426,34 @@
             currentStoryPoint = 'subsolo';
             showScreen('subsoloScreen');
             elements.subsoloText.textContent = '';
+            buttons.help.classList.add('hidden');
+            timers.push(setTimeout(() => {
+                buttons.help.classList.remove('hidden');
+            }, 8000));
         }
 
         function startSoulTraining() {
             showScreen('soulScreen');
             elements.soulText.textContent = "aqui e sua alma, treine lutando contra esses sentimentos para ficar com o seu xp maior";
-            timers.push(setTimeout(() => {
-                const sentimentos = ['odio', 'tristeza', 'raiva', 'medo', 'ansiedade'];
-                let currentFeelingIndex = 0;
-                
-                const originalWinGame = winGame; // Store the original winGame
+            
+            const sentimentos = ['odio', 'tristeza', 'raiva', 'medo', 'ansiedade'];
+            let currentFeelingIndex = 0;
 
-                function fightNextFeeling() {
-                    if (currentFeelingIndex < sentimentos.length) {
-                        triggerBossFightIntro('feeling_' + sentimentos[currentFeelingIndex]);
-                        currentFeelingIndex++;
-                    } else {
-                        // Training complete
-                        winGame = originalWinGame; // Restore original winGame function
-                        gameState.soulTrained = true;
-                        gameState.xp = 50;
-                        startFinalBossRematch();
-                    }
+            const fightNextFeeling = () => {
+                if (currentFeelingIndex < sentimentos.length) {
+                    triggerBossFightIntro('feeling_' + sentimentos[currentFeelingIndex]);
+                    currentFeelingIndex++;
+                } else {
+                    winGame = handleWin; // Restore original winGame function
+                    gameState.soulTrained = true;
+                    gameState.xp = 50;
+                    startFinalBossRematch();
                 }
-                // Override winGame for training
-                winGame = fightNextFeeling;
+            }
+            
+            timers.push(setTimeout(() => {
+                winGame = fightNextFeeling; // Override winGame for training
                 fightNextFeeling();
-
             }, 4000));
         }
         
@@ -499,6 +501,7 @@
 
         function startBossFight(bossType) {
             setupCanvas();
+            isGameOver = false;
             elements.bossIntroText.textContent = '';
             canvas.classList.remove('hidden');
             
@@ -516,7 +519,7 @@
             else if (bossType === 'final') { maxBossHealth = 300; bossHealth = maxBossHealth; }
             else { maxBossHealth = 90; bossHealth = maxBossHealth; }
 
-            player = { x: canvas.width / 2, y: canvas.height / 2, radius: 15, paralyzed: false, transformed: false };
+            player = { x: canvas.width / 2, y: canvas.height / 2, radius: 15, paralyzed: false, transformed: false, rooted: false };
             projectiles = [];
             
             canvas.addEventListener('mousemove', movePlayer);
@@ -525,6 +528,7 @@
 
         function startPlayerTurn() {
             currentTurn = 'player';
+            player.rooted = false;
             const actions = document.getElementById('playerActions');
             actions.classList.remove('hidden');
             buttons.fight.disabled = false;
@@ -591,11 +595,19 @@
             let numProjectiles = isPhase2 ? 40 : 25;
             let attackType = 'default';
 
-            if (lastBossDefeated === 'supremacy') { attackSpeed = isPhase2 ? 5 : 3; numProjectiles = isPhase2 ? 50 : 30; attackType = Math.random() > 0.5 ? 'lightning' : 'elements'; }
+            if (lastBossDefeated === 'final' && !player.transformed) {
+                attackType = 'impossible';
+                player.rooted = true;
+                player.x = canvas.width / 2;
+                player.y = canvas.height / 2;
+                numProjectiles = 150;
+                attackSpeed = 10;
+            }
+            else if (lastBossDefeated === 'final' && player.transformed) { attackSpeed = isPhase2 ? 8 : 5; numProjectiles = isPhase2 ? 70 : 50; attackType = 'final'; }
+            else if (lastBossDefeated === 'supremacy') { attackSpeed = isPhase2 ? 5 : 3; numProjectiles = isPhase2 ? 50 : 30; attackType = Math.random() > 0.5 ? 'lightning' : 'elements'; }
             else if (lastBossDefeated === 'brother') { attackType = 'elements'; }
             else if (lastBossDefeated === 'frog') { attackSpeed = 1.5; numProjectiles = 15; attackType = 'water'; }
             else if (lastBossDefeated === 'colon') { attackSpeed = isPhase2 ? 6 : 4; numProjectiles = isPhase2 ? 60 : 40; attackType = Math.random() > 0.5 ? 'smiles' : 'bombs'; }
-            else if (lastBossDefeated === 'final') { attackSpeed = isPhase2 ? 8 : 5; numProjectiles = isPhase2 ? 70 : 50; attackType = 'final'; }
             else if (lastBossDefeated.startsWith('feeling_')) { attackSpeed = 2; numProjectiles = 20; attackType = 'feeling'; }
 
             for (let i = 0; i < numProjectiles; i++) {
@@ -613,6 +625,7 @@
                 else if (attackType === 'smiles') { text = ':|'; type = 'text'; radius = 10; }
                 else if (attackType === 'bombs') { type = 'bomb'; radius = 10; }
                 else if (attackType === 'final') { type = Math.random() > 0.5 ? 'bomb' : 'smiles'; text = ':['; radius = 12; }
+                else if (attackType === 'impossible') { type = 'final'; text = ':['; radius = 15; }
                 else if (attackType === 'feeling') { type = 'feeling'; radius = 10; }
 
                 projectiles.push({ x, y, vx, vy, radius, text, type });
@@ -707,9 +720,9 @@
             ctx.fillStyle = 'white'; ctx.fillText(`VOCÊ`, canvas.width / 2, canvas.height - 15);
         }
 
-        function movePlayer(e) { if (player && !player.paralyzed) { const rect = canvas.getBoundingClientRect(); player.x = e.clientX - rect.left; player.y = e.clientY - rect.top; } }
+        function movePlayer(e) { if (player && !player.paralyzed && !player.rooted) { const rect = canvas.getBoundingClientRect(); player.x = e.clientX - rect.left; player.y = e.clientY - rect.top; } }
         
-        const handleWin = function() {
+        function handleWin() {
             clearAllTimers();
             
             if (lastBossDefeated === 'smile') { gameState.smileWins++; }
@@ -728,6 +741,9 @@
 
         function showCredits() { showScreen('creditsScreen'); timers.push(setTimeout(initializeGame, 15000)); }
         function loseGame() {
+            if(isGameOver) return;
+            isGameOver = true;
+
             clearAllTimers();
             if (lastBossDefeated === 'final') {
                 startSubsoloPath();
@@ -776,10 +792,11 @@
         
         elements.soulHeart.addEventListener('click', startSoulTraining);
         
-        buttons.help.addEventListener('click', () => {
-            elements.subsoloText.textContent = "*voce pediu por ajuda*";
+        buttons.help.addEventListener('click', function handler() {
+            buttons.help.classList.add('hidden');
+            elements.subsoloText.textContent = "Vc pediu ajuda";
             timers.push(setTimeout(() => {
-                elements.subsoloText.textContent = "*alguma coisa aconteceu, mas voce nao consegue ver*";
+                elements.subsoloText.textContent = "algo aconteceu mas vc não sentiu...";
                 timers.push(setTimeout(() => {
                     showScreen('soulScreen');
                     elements.soulText.textContent = "Clique no seu coração para treinar.";
@@ -812,7 +829,7 @@
         });
 
         buttons.samukaPasswordSubmit.addEventListener('click', () => {
-            if (elements.samukaPasswordInput.value === 'SamukinhaAmigo12') {
+            if (elements.samukaPasswordInput.value === 'SamuzeiroKazeiro') {
                 samukaModeActive = true;
                 elements.secretModeTitle.textContent = "Modo Samuka Ativado";
                 elements.secretModePanel.classList.remove('border-pink-500');
