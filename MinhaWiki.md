@@ -4,7 +4,7 @@
 
 ------------------------------------------------------------------------------------------------------------------------------------------------
 
- #   -*personagems*-
+ #   -*personagens*-
 
 * :) (Sorriso) ele e o primeiro personagem apresentado a o jogador, ele faz algumas perguntas. depois iriamos ter uma boss fight com ele
 * :D (irmão) ele e o irmão do Sorriso, ele aparece depois de derrotar o sorriso 3 vezes, ele faz um quiz de quimica antes de sua boos fight
