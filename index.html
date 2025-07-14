@@ -149,6 +149,7 @@
                 <button class="teleport-button px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded" data-boss="supremacy">Teleporte: O_O</button>
                 <button class="teleport-button px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded" data-boss="frog">Teleporte: Sapo</button>
                 <button class="teleport-button px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded" data-boss="colon">Teleporte: :]</button>
+                <button class="teleport-button px-4 py-2 bg-red-800 hover:bg-red-700 rounded" data-boss="final">Teleporte: :[</button>
             </div>
             <div class="mt-4">
                 <input type="text" id="secretCommandInput" placeholder="Digite um comando..." class="p-2 rounded-lg text-black w-2/3">
@@ -196,6 +197,16 @@
     <div id="xpGainScreen" class="screen bg-black text-yellow-300"><h1 id="xpText" class="text-5xl"></h1></div>
     <div id="newEndScreen" class="screen bg-gray-800 text-white"><h1 class="text-8xl">FIM?</h1><p id="newEndMessage" class="mt-8 text-xl text-yellow-300"></p></div>
     
+    <!-- Telas do Caminho 4 (Subsolo) -->
+    <div id="subsoloScreen" class="screen bg-black text-white">
+        <button id="helpButton" class="px-12 py-6 bg-gray-700 text-white font-bold rounded-lg shadow-xl">Procure por ajuda</button>
+        <p id="subsoloText" class="mt-8 text-xl"></p>
+    </div>
+    <div id="soulScreen" class="screen bg-white text-black">
+        <h1 id="soulHeart" class="text-9xl mb-8 text-cyan-400 cursor-pointer">💙</h1>
+        <p id="soulText" class="text-2xl"></p>
+    </div>
+
     <!-- Telas de Batalha e Finais Genéricas -->
     <div id="bossFightScreen" class="screen bg-black text-white">
         <p id="bossIntroText" class="text-2xl mb-4"></p>
@@ -250,6 +261,7 @@
             dollyPasswordSubmit: document.getElementById('dollyPasswordSubmit'),
             secretContinue: document.getElementById('secretContinueButton'),
             secretCommandSubmit: document.getElementById('secretCommandSubmit'),
+            help: document.getElementById('helpButton'),
         };
         const elements = {
             smileText: document.getElementById('smileText'),
@@ -273,6 +285,9 @@
             secretModePanel: document.getElementById('secretModePanel'),
             secretModeSpoilers: document.getElementById('secretModeSpoilers'),
             secretModeExclusive: document.getElementById('secretModeExclusive'),
+            subsoloText: document.getElementById('subsoloText'),
+            soulText: document.getElementById('soulText'),
+            soulHeart: document.getElementById('soulHeart'),
         };
 
         // --- Variáveis de Estado do Jogo ---
@@ -284,6 +299,7 @@
         let dollyModeActive = false;
         let secretAttackBoost = 1;
         let secretHealthBoost = 0;
+        let gameState = {};
         
         // --- Variáveis da Batalha ---
         const canvas = document.getElementById('bossCanvas');
@@ -315,17 +331,18 @@
                 brotherWins: 0,
                 supremacyWins: 0,
                 selfQuizCompleted: false,
+                soulTrained: false,
             };
         }
 
-        function saveGame(state) {
-            state.storyPoint = currentStoryPoint;
-            localStorage.setItem('gameState', JSON.stringify(state));
+        function saveGame() {
+            gameState.storyPoint = currentStoryPoint;
+            localStorage.setItem('gameState', JSON.stringify(gameState));
             alert('Jogo Salvo!');
         }
 
         function loadGame() {
-            const gameState = getGameState();
+            gameState = getGameState();
             resumeFromState(gameState.storyPoint);
         }
         
@@ -339,6 +356,8 @@
                 case 'newJourney': startNewJourneyPath(); break;
                 case 'beforeFrogBoss': showScreen('newSmileScreen'); elements.newSmileText.textContent = "Hey! lute com esse sapo"; timers.push(setTimeout(() => triggerBossFightIntro('frog'), 3000)); break;
                 case 'beforeColonBoss': showScreen('newEndScreen'); elements.newEndMessage.textContent = "- vc e mais chato do que eu pensava..."; timers.push(setTimeout(() => triggerBossFightIntro('colon'), 3000)); break;
+                case 'subsolo': startSubsoloPath(); break;
+                case 'beforeFinalBossRematch': startFinalBossRematch(); break;
                 default: initializeGame(true); break;
             }
         }
@@ -349,6 +368,7 @@
             dollyModeActive = false;
             secretAttackBoost = 1;
             secretHealthBoost = 0;
+            gameState = getGameState(); // Reset to default
         }
 
         function resetGame() {
@@ -362,7 +382,7 @@
 
         function initializeGame(skipLoadCheck = false) {
             resetGame();
-            const gameState = getGameState();
+            gameState = getGameState();
             if (gameState.storyPoint !== 'start' && !skipLoadCheck) {
                 showScreen('loadSaveModal');
                 return;
@@ -400,6 +420,49 @@
                 timers.push(setTimeout(() => showScreen('newStartScreen'), 4000));
             }, 4000));
         }
+
+        function startSubsoloPath() {
+            currentStoryPoint = 'subsolo';
+            showScreen('subsoloScreen');
+            elements.subsoloText.textContent = '';
+        }
+
+        function startSoulTraining() {
+            showScreen('soulScreen');
+            elements.soulText.textContent = "aqui e sua alma, treine lutando contra esses sentimentos para ficar com o seu xp maior";
+            timers.push(setTimeout(() => {
+                const sentimentos = ['odio', 'tristeza', 'raiva', 'medo', 'ansiedade'];
+                let currentFeelingIndex = 0;
+                
+                const originalWinGame = winGame; // Store the original winGame
+
+                function fightNextFeeling() {
+                    if (currentFeelingIndex < sentimentos.length) {
+                        triggerBossFightIntro('feeling_' + sentimentos[currentFeelingIndex]);
+                        currentFeelingIndex++;
+                    } else {
+                        // Training complete
+                        winGame = originalWinGame; // Restore original winGame function
+                        gameState.soulTrained = true;
+                        gameState.xp = 50;
+                        startFinalBossRematch();
+                    }
+                }
+                // Override winGame for training
+                winGame = fightNextFeeling;
+                fightNextFeeling();
+
+            }, 4000));
+        }
+        
+        function startFinalBossRematch() {
+            currentStoryPoint = 'beforeFinalBossRematch';
+            showScreen('narratorScreen');
+            elements.narratorText.textContent = "Você se sente... mais forte.";
+            timers.push(setTimeout(() => {
+                triggerBossFightIntro('final');
+            }, 3000));
+        }
         
         function showScreen(screenId) { Object.values(screens).forEach(s => s.classList.add('hidden')); if (screens[screenId]) screens[screenId].classList.remove('hidden'); }
         function clearAllTimers() { timers.forEach(clearTimeout); timers = []; if (gameLoopId) cancelAnimationFrame(gameLoopId); }
@@ -411,7 +474,7 @@
         function handleQuiz2Answer(sel) { if (sel === quiz2Data[currentQuiz2Index].correct) { currentQuiz2Index++; loadQuiz2Question(); } else { screens.secondQuizScreen.classList.add('animate-pulse'); setTimeout(() => screens.secondQuizScreen.classList.remove('animate-pulse'), 500); } }
         function loadChemQuizQuestion() { if (currentChemQuizIndex >= chemQuizData.length) { triggerBossFightIntro('brother'); return; } const q = chemQuizData[currentChemQuizIndex]; document.getElementById('chemQuestionText').textContent = q.question; const a = document.getElementById('chemAnswersContainer'); a.innerHTML = ''; q.answers.forEach(ans => { const b = document.createElement('button'); b.textContent = ans; b.className = "w-full p-4 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"; b.onclick = () => handleChemQuizAnswer(ans); a.appendChild(b); }); }
         function handleChemQuizAnswer(sel) { if (sel === chemQuizData[currentChemQuizIndex].correct) { currentChemQuizIndex++; loadChemQuizQuestion(); } else { screens.chemQuizScreen.classList.add('animate-pulse'); setTimeout(() => screens.chemQuizScreen.classList.remove('animate-pulse'), 500); } }
-        function loadSelfQuizQuestion() { if (currentSelfQuizIndex >= selfQuizData.length) { let state = getGameState(); state.selfQuizCompleted = true; saveGame(state); currentStoryPoint = 'beforeFrogBoss'; showScreen('newSmileScreen'); elements.newSmileText.textContent = "Lute com ele!"; buttons.newContinue.classList.add('hidden'); timers.push(setTimeout(() => triggerBossFightIntro('frog'), 3000)); return; } const q = selfQuizData[currentSelfQuizIndex]; document.getElementById('selfQuizQuestionText').textContent = q.question; const a = document.getElementById('selfQuizAnswersContainer'); a.innerHTML = ''; q.answers.forEach(ans => { const b = document.createElement('button'); b.textContent = ans; b.className = "w-full p-4 bg-gray-400 hover:bg-gray-500 rounded-lg transition-colors"; b.onclick = () => handleSelfQuizAnswer(ans); a.appendChild(b); }); }
+        function loadSelfQuizQuestion() { if (currentSelfQuizIndex >= selfQuizData.length) { gameState.selfQuizCompleted = true; currentStoryPoint = 'beforeFrogBoss'; showScreen('newSmileScreen'); elements.newSmileText.textContent = "Lute com ele!"; buttons.newContinue.classList.add('hidden'); timers.push(setTimeout(() => triggerBossFightIntro('frog'), 3000)); return; } const q = selfQuizData[currentSelfQuizIndex]; document.getElementById('selfQuizQuestionText').textContent = q.question; const a = document.getElementById('selfQuizAnswersContainer'); a.innerHTML = ''; q.answers.forEach(ans => { const b = document.createElement('button'); b.textContent = ans; b.className = "w-full p-4 bg-gray-400 hover:bg-gray-500 rounded-lg transition-colors"; b.onclick = () => handleSelfQuizAnswer(ans); a.appendChild(b); }); }
         function handleSelfQuizAnswer(sel) { if (sel === selfQuizData[currentSelfQuizIndex].correct) { currentSelfQuizIndex++; loadSelfQuizQuestion(); } else { screens.selfQuizScreen.classList.add('animate-pulse'); setTimeout(() => screens.selfQuizScreen.classList.remove('animate-pulse'), 500); } }
 
         // --- Lógica da Batalha ---
@@ -426,6 +489,7 @@
             if (bossType === 'supremacy') introText = ".............";
             if (bossType === 'frog') introText = "Croac!";
             if (bossType === 'colon') introText = "Por isso que eu irei te exterminar agora...";
+            if (bossType === 'final') introText = "Você voltou?";
             
             elements.bossIntroText.textContent = introText;
             canvas.classList.add('hidden');
@@ -448,6 +512,8 @@
             else if (bossType === 'brother') { maxBossHealth = 180; bossHealth = maxBossHealth; }
             else if (bossType === 'frog') { maxBossHealth = 50; bossHealth = maxBossHealth; }
             else if (bossType === 'colon') { maxBossHealth = 250; bossHealth = maxBossHealth; }
+            else if (bossType.startsWith('feeling_')) { maxBossHealth = 60; bossHealth = maxBossHealth; }
+            else if (bossType === 'final') { maxBossHealth = 300; bossHealth = maxBossHealth; }
             else { maxBossHealth = 90; bossHealth = maxBossHealth; }
 
             player = { x: canvas.width / 2, y: canvas.height / 2, radius: 15, paralyzed: false, transformed: false };
@@ -463,9 +529,13 @@
             actions.classList.remove('hidden');
             buttons.fight.disabled = false;
             buttons.heal.disabled = healCharges <= 0;
+            
+            const isAwakened = gameState.soulTrained;
+            buttons.transform.textContent = isAwakened ? "Despertar" : "Transforma";
             buttons.transform.disabled = player.transformed;
-            const showTransform = (lastBossDefeated === 'supremacy' || lastBossDefeated === 'colon');
+            const showTransform = (lastBossDefeated === 'supremacy' || lastBossDefeated === 'colon' || lastBossDefeated === 'final');
             buttons.transform.classList.toggle('hidden', !showTransform);
+            
             elements.healChargesText.textContent = healCharges;
             drawBattleState();
         }
@@ -488,9 +558,15 @@
         function handlePlayerTransform() {
             if (currentTurn !== 'player' || player.transformed) return;
             player.transformed = true;
-            maxPlayerHealth += 20;
-            playerHealth += 20;
-            playerAttackModifier = 1.5;
+            if (gameState.soulTrained) { // Despertar
+                maxPlayerHealth += 100;
+                playerHealth += 100;
+                playerAttackModifier = 2.5;
+            } else { // Transformação Normal
+                maxPlayerHealth += 20;
+                playerHealth += 20;
+                playerAttackModifier = 1.5;
+            }
             endPlayerTurn();
             startBossTurn();
         }
@@ -506,7 +582,7 @@
             document.getElementById('playerActions').classList.add('hidden');
             projectiles = [];
             
-            if ((lastBossDefeated === 'brother' || lastBossDefeated === 'supremacy' || lastBossDefeated === 'colon') && bossHealth <= maxBossHealth / 2 && bossPhase === 1) {
+            if ((lastBossDefeated === 'brother' || lastBossDefeated === 'supremacy' || lastBossDefeated === 'colon' || lastBossDefeated === 'final') && bossHealth <= maxBossHealth / 2 && bossPhase === 1) {
                 bossPhase = 2;
             }
 
@@ -519,6 +595,8 @@
             else if (lastBossDefeated === 'brother') { attackType = 'elements'; }
             else if (lastBossDefeated === 'frog') { attackSpeed = 1.5; numProjectiles = 15; attackType = 'water'; }
             else if (lastBossDefeated === 'colon') { attackSpeed = isPhase2 ? 6 : 4; numProjectiles = isPhase2 ? 60 : 40; attackType = Math.random() > 0.5 ? 'smiles' : 'bombs'; }
+            else if (lastBossDefeated === 'final') { attackSpeed = isPhase2 ? 8 : 5; numProjectiles = isPhase2 ? 70 : 50; attackType = 'final'; }
+            else if (lastBossDefeated.startsWith('feeling_')) { attackSpeed = 2; numProjectiles = 20; attackType = 'feeling'; }
 
             for (let i = 0; i < numProjectiles; i++) {
                 const side = Math.floor(Math.random() * 4);
@@ -534,6 +612,8 @@
                 else if (attackType === 'water') { type = 'water'; radius = 15; }
                 else if (attackType === 'smiles') { text = ':|'; type = 'text'; radius = 10; }
                 else if (attackType === 'bombs') { type = 'bomb'; radius = 10; }
+                else if (attackType === 'final') { type = Math.random() > 0.5 ? 'bomb' : 'smiles'; text = ':['; radius = 12; }
+                else if (attackType === 'feeling') { type = 'feeling'; radius = 10; }
 
                 projectiles.push({ x, y, vx, vy, radius, text, type });
             }
@@ -577,10 +657,11 @@
 
                 // Draw projectiles
                 projectiles.forEach(p => {
-                    if (p.type === 'text') { ctx.font = "20px 'Press Start 2P'"; ctx.fillStyle = (p.text === ':|') ? 'orange' : 'lime'; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(p.text, p.x, p.y); }
+                    if (p.type === 'text') { ctx.font = "20px 'Press Start 2P'"; ctx.fillStyle = (p.text === ':|' || p.text === ':[') ? 'orange' : 'lime'; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(p.text, p.x, p.y); }
                     else if (p.type === 'lightning') { ctx.fillStyle = 'yellow'; ctx.fillRect(p.x - 2, p.y - 10, 4, 20); }
                     else if (p.type === 'water') { ctx.fillStyle = 'blue'; ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2); ctx.fill(); }
                     else if (p.type === 'bomb') { ctx.fillStyle = 'darkred'; ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2); ctx.fill(); }
+                    else if (p.type === 'feeling') { ctx.fillStyle = `hsl(${Math.random() * 360}, 100%, 50%)`; ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2); ctx.fill(); }
                     else { ctx.fillStyle = 'white'; ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2); ctx.fill(); }
                 });
             } else {
@@ -594,6 +675,8 @@
             else if (lastBossDefeated === 'supremacy') face = 'O_O';
             else if (lastBossDefeated === 'frog') face = '(o.o)';
             else if (lastBossDefeated === 'colon') face = ':]';
+            else if (lastBossDefeated === 'final') face = ':[';
+            else if (lastBossDefeated.startsWith('feeling_')) face = '>:|';
             
             ctx.font = "80px 'Press Start 2P'"; ctx.fillStyle = "red"; ctx.textAlign = "center";
             const shakeX = (Math.random() - 0.5) * (1 - (bossHealth / maxBossHealth)) * 15;
@@ -607,6 +690,8 @@
             else if (lastBossDefeated === 'supremacy') bossName = 'SUPREMACIA';
             else if (lastBossDefeated === 'frog') bossName = 'SAPO';
             else if (lastBossDefeated === 'colon') bossName = ':]';
+            else if (lastBossDefeated === 'final') bossName = ':[';
+            else if (lastBossDefeated.startsWith('feeling_')) bossName = lastBossDefeated.split('_')[1].toUpperCase();
 
             ctx.fillStyle = '#555'; ctx.fillRect(10, 10, canvas.width - 20, 30);
             let healthColor = 'red';
@@ -624,26 +709,30 @@
 
         function movePlayer(e) { if (player && !player.paralyzed) { const rect = canvas.getBoundingClientRect(); player.x = e.clientX - rect.left; player.y = e.clientY - rect.top; } }
         
-        function winGame() {
+        const handleWin = function() {
             clearAllTimers();
-            const state = getGameState();
-            if (lastBossDefeated === 'smile') { state.smileWins++; }
-            else if (lastBossDefeated === 'brother') { state.brotherWins++; }
-            else if (lastBossDefeated === 'supremacy') { state.supremacyWins++; }
-            else if (lastBossDefeated === 'frog') { currentStoryPoint = 'beforeColonBoss'; showScreen('xpGainScreen'); elements.xpText.textContent = "Seu XP subiu para 1"; timers.push(setTimeout(() => { showScreen('newSmileScreen'); elements.newSmileText.textContent = "isso que vc viu, e xp, Basicamente o xp e seu nivel de habilidade"; timers.push(setTimeout(() => { showScreen('newEndScreen'); elements.newEndMessage.textContent = ""; timers.push(setTimeout(() => { elements.newEndMessage.textContent = "- vc e mais chato do que eu pensava..."; timers.push(setTimeout(() => triggerBossFightIntro('colon'), 3000)); }, 8000)); }, 4000)); }, 3000)); return; }
             
-            saveGame(state);
-
+            if (lastBossDefeated === 'smile') { gameState.smileWins++; }
+            else if (lastBossDefeated === 'brother') { gameState.brotherWins++; }
+            else if (lastBossDefeated === 'supremacy') { gameState.supremacyWins++; }
+            else if (lastBossDefeated === 'frog') { currentStoryPoint = 'beforeColonBoss'; showScreen('xpGainScreen'); elements.xpText.textContent = "Seu XP subiu para 1"; timers.push(setTimeout(() => { showScreen('newSmileScreen'); elements.newSmileText.textContent = "isso que vc viu, e xp, Basicamente o xp e seu nivel de habilidade"; timers.push(setTimeout(() => { showScreen('newEndScreen'); elements.newEndMessage.textContent = ""; timers.push(setTimeout(() => { elements.newEndMessage.textContent = "- vc e mais chato do que eu pensava..."; timers.push(setTimeout(() => triggerBossFightIntro('colon'), 3000)); }, 8000)); }, 4000)); }, 3000)); return; }
+            else if (lastBossDefeated === 'colon') { triggerBossFightIntro('final'); return; }
+            
             if (lastBossDefeated === 'supremacy') {
                 startNewJourneyPath();
             } else {
                 showScreen('victoryScreen');
             }
         }
+        let winGame = handleWin;
 
         function showCredits() { showScreen('creditsScreen'); timers.push(setTimeout(initializeGame, 15000)); }
         function loseGame() {
             clearAllTimers();
+            if (lastBossDefeated === 'final') {
+                startSubsoloPath();
+                return;
+            }
             let msg = "";
             if (lastBossDefeated === 'supremacy') msg = "relaxe... isso e so um sonho, MAS VOCE NAO PODE ACORDAR HAHAHAHAHAHAHAHAHHAHAHAHAHAHAHAHAHA";
             if (lastBossDefeated === 'colon') msg = "Vc e muito fraco uhum...";
@@ -664,7 +753,6 @@
         buttons.dialogue.addEventListener('click', () => { buttons.dialogue.classList.add('hidden'); elements.bwIntroText.textContent = "Voce: Se voce e tao bom assim, porque vc perdeu?"; timers.push(setTimeout(() => triggerBossFightIntro('supremacy'), 4000)); });
         
         buttons.newStart.addEventListener('click', () => {
-            const gameState = getGameState();
             if (gameState.selfQuizCompleted) {
                 currentStoryPoint = 'beforeFrogBoss';
                 showScreen('newSmileScreen');
@@ -682,9 +770,22 @@
 
         buttons.newContinue.addEventListener('click', () => showScreen('photoButtonScreen'));
         buttons.photo.addEventListener('click', () => { showScreen('selfQuizScreen'); currentSelfQuizIndex = 0; loadSelfQuizQuestion(); });
-        buttons.save.addEventListener('click', () => saveGame(getGameState()));
+        buttons.save.addEventListener('click', () => saveGame(gameState));
         buttons.confirmLoad.addEventListener('click', () => { showScreen('startScreen'); loadGame(); });
         buttons.denyLoad.addEventListener('click', () => { clearAllProgress(); initializeGame(true); });
+        
+        elements.soulHeart.addEventListener('click', startSoulTraining);
+        
+        buttons.help.addEventListener('click', () => {
+            elements.subsoloText.textContent = "*voce pediu por ajuda*";
+            timers.push(setTimeout(() => {
+                elements.subsoloText.textContent = "*alguma coisa aconteceu, mas voce nao consegue ver*";
+                timers.push(setTimeout(() => {
+                    showScreen('soulScreen');
+                    elements.soulText.textContent = "Clique no seu coração para treinar.";
+                }, 3000));
+            }, 3000));
+        });
         
         buttons.samuka.addEventListener('click', () => {
             if (samukaModeActive) {
@@ -764,12 +865,11 @@
                 else { alert('Nenhum quiz ativo.'); return; }
                 alert('Quiz completo!');
             } else if (dollyModeActive && command === 'unlock all') {
-                let state = getGameState();
-                state.smileWins = 3;
-                state.brotherWins = 3;
-                state.supremacyWins = 1;
-                state.selfQuizCompleted = true;
-                saveGame(state);
+                gameState.smileWins = 3;
+                gameState.brotherWins = 3;
+                gameState.supremacyWins = 1;
+                gameState.selfQuizCompleted = true;
+                saveGame(gameState);
                 alert('Todo o progresso foi desbloqueado!');
                 initializeGame(true);
             } else {
